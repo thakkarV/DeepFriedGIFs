@@ -36,7 +36,6 @@ class Dataset(object):
                 self.files = find_files(self.datadir, "*.gif")
             random.shuffle(self.files)
 
-            gif_idx = 0
             num_gifs = len(self.files)
             i = 0
             num_in_batch = 0
@@ -45,7 +44,7 @@ class Dataset(object):
             palette_batch = []
             
             while i < num_gifs:
-                frames, palette = self.get_frames(self.files[gif_idx])
+                frames, palette = self.get_frames(self.files[i])
                 
                 # now crop frames if needed
                 if (self.crop):
