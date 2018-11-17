@@ -80,11 +80,19 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
+        "--n_epoch",
+        type = int,
+        default = 1,
+        required = True,
+        help = "Number of epochs to train."
+    )
+
+    parser.add_argument(
         "-ch", "--crop_height",
         type = int,
         default = 100,
         required = False,
-        help = "cropping width for gif"
+        help = "cropping width for gif."
     )
 
     parser.add_argument(
@@ -92,7 +100,7 @@ def add_common_args(parser):
         type = int,
         default = 100,
         required = False,
-        help = "cropping width for gif"
+        help = "cropping width for gif."
     )
 
     parser.add_argument(
@@ -100,7 +108,7 @@ def add_common_args(parser):
         type = str,
         default = None,
         required = False,
-        help = "Crop area is UL, LL, UR, LR, or CC"
+        help = "Crop area is UL, LL, UR, LR, or CC."
     )
 
     parser.add_argument(

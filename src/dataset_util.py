@@ -14,10 +14,9 @@ def find_files(directory, pattern):
     return files
 
 class Dataset(object):
-    def __init__(self, datadir, crop=False):
+    def __init__(self, datadir):
         self.datadir = datadir
         self.files   = None
-        self.crop    = crop
 
     def gif_generator(
         self,
@@ -26,7 +25,7 @@ class Dataset(object):
         gif_width=None,
         crop_pos=None):
 
-        if (self.crop):
+        if (crop_pos != None):
             assert gif_height is not None
             assert gif_width is not None
             assert crop_pos is not None
@@ -47,7 +46,7 @@ class Dataset(object):
                 frames, palette = self.get_frames(self.files[i])
                 
                 # now crop frames if needed
-                if (self.crop):
+                if (crop_pos != None):
                     # will return None if the gif cannot be cropped
                     frames = self.crop_frames(frames, crop_pos, gif_height, gif_width)
                 
@@ -127,8 +126,8 @@ class Dataset(object):
 
 
 def test(path):
-    dataset = Dataset(path, crop=True)
-    for gif, palette in dataset.gif_generator(gif_height=100, gif_width=100, crop_pos="CC"):
+    dataset = Dataset(path)
+    for gif, palette in dataset.gif_generator(gif_height=100, gif_width=100, crop_pos=None):
         print(len(gif))
         print(gif[0].shape)
         print(len(palette[0]))
