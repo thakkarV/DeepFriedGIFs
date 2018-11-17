@@ -127,8 +127,8 @@ class Dataset(object):
 
 
 def test(path):
-    dataset = Dataset(path)
-    for gif, palette in dataset.gif_generator():
+    dataset = Dataset(path, crop=True)
+    for gif, palette in dataset.gif_generator(gif_height=100, gif_width=100, crop_pos="CC"):
         print(len(gif))
         print(gif[0].shape)
         print(len(palette[0]))

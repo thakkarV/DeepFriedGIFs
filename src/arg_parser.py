@@ -80,6 +80,30 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
+        "-ch", "--crop_height",
+        type = int,
+        default = 100,
+        required = False,
+        help = "cropping width for gif"
+    )
+
+    parser.add_argument(
+        "-cw", "--crop_width",
+        type = int,
+        default = 100,
+        required = False,
+        help = "cropping width for gif"
+    )
+
+    parser.add_argument(
+        "-cp", "--crop_pos",
+        type = str,
+        default = None,
+        required = False,
+        help = "Crop area is UL, LL, UR, LR, or CC"
+    )
+
+    parser.add_argument(
         "-m", "--model-save-dir",
         type = str,
         required = True,
