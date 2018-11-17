@@ -22,35 +22,54 @@ class Dataset(object):
     def gif_generator(
         self,
         batch_size=1,
-        x_len=None,
-        y_len=None,
+        gif_height=None,
+        gif_width=None,
         crop_pos=None):
 
         if (self.crop):
-            assert x_len is not None
-            assert y_len is not None
+            assert gif_height is not None
+            assert gif_width is not None
             assert crop_pos is not None
 
-        if self.files is None:
-            self.files = find_files(self.datadir, "*.gif")
-        random.shuffle(self.files)
+        while True:
+            if self.files is None:
+                self.files = find_files(self.datadir, "*.gif")
+            random.shuffle(self.files)
 
-        gif_idx = 0
-        num_gifs = len(self.files)
-        while num_gifs >= gif_idx + batch_size:
+            gif_idx = 0
+            num_gifs = len(self.files)
+            i = 0
+            num_in_batch = 0
+        
             frame_batch   = []
             palette_batch = []
-            for i in range(batch_size):
+            
+            while i < num_gifs:
                 frames, palette = self.get_frames(self.files[gif_idx])
                 
                 # now crop frames if needed
                 if (self.crop):
-                    frames = self.crop_frames(frames, crop_pos, x_len, y_len)
+                    # will return None if the gif cannot be cropped
+                    frames = self.crop_frames(frames, crop_pos, gif_height, gif_width)
+                
+                # check if cropping worked, otherwise do not add current gif to batch
+                if frames.all() != None:
+                    frame_batch.append(frames)
+                    palette_batch.append(palette)
+                    num_in_batch += 1
 
-                frame_batch.append(frames)
-                palette_batch.append(palette)
-                gif_idx += 1
-            yield frame_batch, palette_batch
+                i+= 1
+
+                # got complete batch
+                if num_in_batch == batch_size:
+                    # reset number in batch and yield
+                    num_in_batch = 0
+                    yield frame_batch, palette_batch
+
+                # check if num_in_batch has been reset, and reset the batch arrays
+                if num_in_batch == 0:   
+                    frame_batch   = []
+                    palette_batch = []
 
     def get_frames(self, gif_file):
         gif = Image.open(gif_file)
@@ -68,31 +87,44 @@ class Dataset(object):
                 frames.append(np.array(frame))
         except EOFError:
             gif.close()
+            print("Frames: ", np.array(frames).shape)
             return np.array(frames), np.array(palette)
 
-    def crop_frames(self, frames, pos, x_len, y_len):
-        if   pos == "UL":
-            # crop and keep upper left
-            raise NotImplementedError("")
-            return frames
-        elif pos == "LL":
-            # crop and keep lower left
-            raise NotImplementedError("")
-            return frames
-        elif pos == "UR":
-            # crop and keep upper right
-            raise NotImplementedError("")
-            return frames
-        elif pos == "LR":
-            # crop and keep lower right
-            raise NotImplementedError("")
-            return frames
-        elif pos == "CC":
-            # crop and keep center
-            raise NotImplementedError("")
-            return frames
-        else:
-            raise Exception("Invalid crop position.")
+    def crop_frames(self, frames, pos, gif_height, gif_width):
+        for frame in frames:
+            num_frames, true_x, true_y = frames.shape
+            if true_x < gif_height or true_y < gif_width:
+                return None
+            elif   pos == "UL":
+                # crop and keep upper left
+                return frames[:,0:gif_height,0:gif_width]
+            elif pos == "LL":
+                # crop and keep lower left
+                return frames[:,-gif_height:,0:gif_width]
+            elif pos == "UR":
+                # crop and keep upper right
+                return frames[:,0:gif_height,-gif_width:]
+            elif pos == "LR":
+                # crop and keep lower right
+                return frames[:,-gif_height:,-gif_width:]
+            elif pos == "CC":
+                # crop and keep center
+
+                # find center of image
+                mid_x = int(true_x/2)
+                mid_y = int(true_y/2)
+
+                # find point to begin cropping at Len(cropped/2)-midpoint
+                crop_beg_x = mid_x - int(gif_height/2)
+                crop_beg_y = mid_y - int(gif_width/2)
+
+                # end cropping by incrementing size
+                crop_end_x = crop_beg_x + gif_height
+                crop_end_y = crop_beg_y + gif_width
+
+                return frames[:,crop_beg_x:crop_end_x,crop_beg_y:crop_end_y]
+            else:
+                raise Exception("Invalid crop position.")
 
 
 def test(path):
@@ -106,6 +138,7 @@ def test(path):
         print(ar.dtype)
         print(getsizeof(palette[0]))
         print(getsizeof(ar))
+
 
         # frame.save("test{}.png".format(idx), **frame.info)
 
