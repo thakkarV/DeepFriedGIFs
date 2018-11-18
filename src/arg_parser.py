@@ -26,6 +26,14 @@ def parse_train_args():
         help = "Name of the reconstruction loss to be used for training."
     )
 
+    parser.add_argument(
+        "-lr", "--learning_rate",
+        type = float,
+        default = 0.001,
+        required = False,
+        help = "Learning rate for the optimizer."
+    )
+
     return parser.parse_args()
 
 
@@ -80,7 +88,7 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
-        "--n_epoch",
+        "--n-epoch",
         type = int,
         default = 1,
         required = True,
@@ -88,7 +96,7 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
-        "-ch", "--crop_height",
+        "-ch", "--crop-height",
         type = int,
         default = 100,
         required = False,
@@ -96,7 +104,7 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
-        "-cw", "--crop_width",
+        "-cw", "--crop-width",
         type = int,
         default = 100,
         required = False,
@@ -112,7 +120,7 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
-        "-m", "--model-save-dir",
+        "-m", "--save-path",
         type = str,
         required = True,
         help = "Path to codec saved weights."
