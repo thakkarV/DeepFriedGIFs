@@ -13,7 +13,7 @@ def vanilla_2d_conv(x, args, reuse=False):
     
     Arguments:
         args {Arguments} -- network definition parameters
-        x {np.array} -- args.gif_width x args.gif_height x 1 shaped input image
+        x {np.ndarray} -- args.gif_width x args.gif_height x 1 shaped input image
     
     Keyword Arguments:
         reuse {bool} -- reuse layers in the scope (default: {False})
