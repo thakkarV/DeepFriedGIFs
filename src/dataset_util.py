@@ -20,7 +20,7 @@ class Dataset(object):
 
     def gif_generator(
         self,
-        batch_size=1,
+        batch_size=10,
         gif_height=None,
         gif_width=None,
         crop_pos=None):
@@ -52,22 +52,35 @@ class Dataset(object):
                 
                 # check if cropping worked, otherwise do not add current gif to batch
                 if frames.all() != None:
-                    frame_batch.append(frames)
-                    palette_batch.append(palette)
-                    num_in_batch += 1
+                    num_frames_in_gif = frames.shape[0]
+                    
+                    for frame_i in range(0,num_frames_in_gif):
+                        frame_batch.append(frames[frame_i,:,:])
+                        palette_batch.append(palette)
+                        num_in_batch += 1
+
+                        # got complete batch
+                        if num_in_batch == batch_size:
+                            # reset number in batch and yield
+                            num_in_batch = 0
+                            yield frame_batch, palette_batch
+                        
+                        if num_in_batch == 0:   
+                            frame_batch   = []
+                            palette_batch = []
 
                 i+= 1
 
-                # got complete batch
-                if num_in_batch == batch_size:
-                    # reset number in batch and yield
-                    num_in_batch = 0
-                    yield frame_batch, palette_batch
+                # # got complete batch
+                # if num_in_batch == batch_size:
+                #     # reset number in batch and yield
+                #     num_in_batch = 0
+                #     yield frame_batch, palette_batch
 
-                # check if num_in_batch has been reset, and reset the batch arrays
-                if num_in_batch == 0:   
-                    frame_batch   = []
-                    palette_batch = []
+                # # check if num_in_batch has been reset, and reset the batch arrays
+                # if num_in_batch == 0:   
+                #     frame_batch   = []
+                #     palette_batch = []
 
     def get_frames(self, gif_file):
         gif = Image.open(gif_file)
@@ -128,7 +141,7 @@ class Dataset(object):
 def test(path):
     dataset = Dataset(path)
     for gif, palette in dataset.gif_generator(gif_height=100, gif_width=100, crop_pos=None):
-        print(len(gif))
+        print("num in batch: ", len(gif))
         print(gif[0].shape)
         print(len(palette[0]))
         print(palette[0].dtype)
