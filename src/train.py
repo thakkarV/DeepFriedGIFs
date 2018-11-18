@@ -90,6 +90,8 @@ def train(args):
         # Main training loop
         try:
             while epoch < args.n_epoch:
+                # FIXME 11/18/18 18:36 - this setup takes a frame as input and reconstructs the same frame
+                # this is meant only for proof of concept - need to update this after we have numbers
                 for input_frames, target_frame in dataset.gif_generator(
                         args.crop_height,
                         args.crop_width,
@@ -98,7 +100,7 @@ def train(args):
                     loss, _, summary = sess.run([loss_op, train_op, summary_op],
                         feed_dict = {
                             X : input_frames,
-                            T : target_frame
+                            T : input_frames    # FIXME 11/18/18 18:36
                         }
                     )
 
