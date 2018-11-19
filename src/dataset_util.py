@@ -55,7 +55,7 @@ class Dataset(object):
                     num_frames_in_gif = frames.shape[0]
                     
                     for frame_i in range(0,num_frames_in_gif):
-                        frame_batch.append(frames[frame_i,:,:])
+                        frame_batch.append(np.expand_dims(frames[frame_i,:,:], axis=-1))
                         palette_batch.append(palette)
                         num_in_batch += 1
 
@@ -98,7 +98,6 @@ class Dataset(object):
                 frames.append(np.array(frame))
         except EOFError:
             gif.close()
-            print("Frames: ", np.array(frames).shape)
             return np.array(frames), np.array(palette)
 
     def crop_frames(self, frames, pos, gif_height, gif_width):
