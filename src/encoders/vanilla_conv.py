@@ -1,19 +1,13 @@
-"""
-NOTE: Arguments class MUST define the following
-args.gif_width
-args.gif_height
-args.z_dim
-"""
 import tensorflow as tf
 
 
-def vanilla_2d_conv(x, args, reuse=False):
+def vanilla_encoder(x, args, reuse=False):
     """VGG-11 architecture based CNN that encodes input image to latent space representation
     See ConvNet Configuration A in Table 1 of paper at https://arxiv.org/pdf/1409.1556.pdf
     
     Arguments:
         args {Arguments} -- network definition parameters
-        x {np.ndarray} -- args.gif_width x args.gif_height x 1 shaped input image
+        x {np.ndarray} -- args.crop_width x args.crop_height x 1 shaped input image
     
     Keyword Arguments:
         reuse {bool} -- reuse layers in the scope (default: {False})
