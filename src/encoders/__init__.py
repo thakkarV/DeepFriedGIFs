@@ -1,1 +1,1 @@
-from . import vanilla_conv
+from .vanilla_conv import vanilla_encoder

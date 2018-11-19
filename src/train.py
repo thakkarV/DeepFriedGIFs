@@ -1,8 +1,8 @@
 import os
 import tensorflow as tf
 
-import encoders
-import decoders
+from encoders import vanilla_encoder
+from decoders import vanilla_decoder
 from arg_parser import parse_train_args
 from dataset_util import Dataset
 from loss import reconstruction_loss
@@ -10,12 +10,14 @@ from loss import reconstruction_loss
 def train(args):
     # AttributeErrors not handled
     # fail early if the encoder and decoder are not found
-    encoder = getattr(encoders, args.encoder)
-    decoder = getattr(decoders, args.decoder)
+    # encoder = getattr(encoders, args.encoder)
+    # decoder = getattr(decoders, args.decoder)
+    encoder = vanilla_encoder
+    decoder = vanilla_decoder
     dataset = Dataset(args.data_dir)
 
     # graph definition
-    with tf.get_default_graph() as g:
+    with tf.Graph().as_default() as g:
         # placeholders
         # target frame, number of channels is always one for GIF
         T = tf.placeholder(tf.float16, shape=(
@@ -92,10 +94,10 @@ def train(args):
             while epoch < args.n_epoch:
                 # FIXME 11/18/18 18:36 - this setup takes a frame as input and reconstructs the same frame
                 # this is meant only for proof of concept - need to update this after we have numbers
-                for input_frames, target_frame in dataset.gif_generator(
-                        args.crop_height,
-                        args.crop_width,
-                        args.crop_pos):
+                for input_frames, target_frame in dataset.gif_generator(batch_size=args.batch_size,
+                                                                        gif_height=args.crop_height,
+                                                                        gif_width=args.crop_width,
+                                                                        crop_pos=args.crop_pos):
 
                     loss, _, summary = sess.run([loss_op, train_op, summary_op],
                         feed_dict = {

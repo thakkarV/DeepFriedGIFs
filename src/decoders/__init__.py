@@ -1,1 +1,1 @@
-from . import vanilla_deconv
+from .vanilla_deconv import vanilla_decoder
