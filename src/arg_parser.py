@@ -34,6 +34,22 @@ def parse_train_args():
         help = "Learning rate for the optimizer."
     )
 
+    parser.add_argument(
+        "-b", "--batch-size",
+        type = int,
+        default = 1,
+        required = False,
+        help = "Batch size used for training"
+    )
+
+    parser.add_argument(
+        "-zd", "--z-dim",
+        type = int,
+        default = 100,
+        required = False,
+        help = "Dimensions of latent space representative vector"
+    )
+
     return parser.parse_args()
 
 
