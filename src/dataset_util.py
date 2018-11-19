@@ -62,6 +62,8 @@ class Dataset(object):
                 for frame_idx in range(0, num_frames_in_gif):
                     # expand dims added to ensure yield output is of shape (batch_size, height, width, channels)
                     yield np.expand_dims(np.expand_dims(frames[frame_idx, :, :], axis=-1), axis=0), palette
+
+            curr_gif_idx += 1
         # ================================================================================================================= #
         
         # ===================================================== FIXME ===================================================== #
