@@ -25,62 +25,92 @@ class Dataset(object):
         gif_width=None,
         crop_pos=None):
 
+        # if crop_pos is given, that means cropping is needed. therefore height and width MUST be given
         if (crop_pos != None):
             assert gif_height is not None
             assert gif_width is not None
-            assert crop_pos is not None
 
-        while True:
-            if self.files is None:
-                self.files = find_files(self.datadir, "*.gif")
-            random.shuffle(self.files)
+        # if dataset has not been fetched yet, fetch it now
+        if self.files is None:
+            self.files = find_files(self.datadir, "*.gif")
 
-            num_gifs = len(self.files)
-            i = 0
-            num_in_batch = 0
-        
-            frame_batch   = []
-            palette_batch = []
+        # shuffle every generator is restarted
+        random.shuffle(self.files)
+
+        # total number of gifs in dataset
+        num_gifs = len(self.files)
+
+        # index of gif whose frames will be passed as current batch frames
+        curr_gif_idx = 0
+
+        # ================================================== HACK SOLUTION ================================================== #
+        # get frames in current gif
+        while curr_gif_idx < num_gifs:
+            # all frames and palette of current gif
+            frames, palette = self.get_frames(self.files[curr_gif_idx])
+
+            # now crop frames if needed
+            if (crop_pos != None):
+                # will return None if the gif cannot be cropped
+                frames = self.crop_frames(frames, crop_pos, gif_height, gif_width)
             
-            while i < num_gifs:
-                frames, palette = self.get_frames(self.files[i])
+            # check if cropping worked, otherwise do not add current gif to batch
+            if frames.all() != None:
+                num_frames_in_gif = frames.shape[0]
                 
-                # now crop frames if needed
-                if (crop_pos != None):
-                    # will return None if the gif cannot be cropped
-                    frames = self.crop_frames(frames, crop_pos, gif_height, gif_width)
+                # yield frame by frame
+                for frame_idx in range(0, num_frames_in_gif):
+                    # expand dims added to ensure yield output is of shape (batch_size, height, width, channels)
+                    yield np.expand_dims(np.expand_dims(frames[frame_idx, :, :], axis=-1), axis=0), palette
+        # ================================================================================================================= #
+        
+        # ===================================================== FIXME ===================================================== #
+        # i = 0
+        # num_in_batch = 0
+    
+        # frame_batch   = []
+        # palette_batch = []
+        
+        # while i < num_gifs:
+        #     frames, palette = self.get_frames(self.files[i])
+            
+        #     # now crop frames if needed
+        #     if (crop_pos != None):
+        #         # will return None if the gif cannot be cropped
+        #         frames = self.crop_frames(frames, crop_pos, gif_height, gif_width)
+            
+        #     # check if cropping worked, otherwise do not add current gif to batch
+        #     if frames.all() != None:
+        #         num_frames_in_gif = frames.shape[0]
                 
-                # check if cropping worked, otherwise do not add current gif to batch
-                if frames.all() != None:
-                    num_frames_in_gif = frames.shape[0]
+        #         for frame_i in range(0,num_frames_in_gif):
+        #             frame_batch.append(np.expand_dims(frames[frame_i,:,:], axis=-1))
+        #             palette_batch.append(palette)
+        #             num_in_batch += 1
+
+        #             # got complete batch
+        #             if num_in_batch == batch_size:
+        #                 # reset number in batch and yield
+        #                 num_in_batch = 0
+        #                 yield frame_batch, palette_batch
                     
-                    for frame_i in range(0,num_frames_in_gif):
-                        frame_batch.append(np.expand_dims(frames[frame_i,:,:], axis=-1))
-                        palette_batch.append(palette)
-                        num_in_batch += 1
+        #             if num_in_batch == 0:   
+        #                 frame_batch   = []
+        #                 palette_batch = []
 
-                        # got complete batch
-                        if num_in_batch == batch_size:
-                            # reset number in batch and yield
-                            num_in_batch = 0
-                            yield frame_batch, palette_batch
-                        
-                        if num_in_batch == 0:   
-                            frame_batch   = []
-                            palette_batch = []
+        #     i+= 1
 
-                i+= 1
+        #     # # got complete batch
+        #     # if num_in_batch == batch_size:
+        #     #     # reset number in batch and yield
+        #     #     num_in_batch = 0
+        #     #     yield frame_batch, palette_batch
 
-                # # got complete batch
-                # if num_in_batch == batch_size:
-                #     # reset number in batch and yield
-                #     num_in_batch = 0
-                #     yield frame_batch, palette_batch
-
-                # # check if num_in_batch has been reset, and reset the batch arrays
-                # if num_in_batch == 0:   
-                #     frame_batch   = []
-                #     palette_batch = []
+        #     # # check if num_in_batch has been reset, and reset the batch arrays
+        #     # if num_in_batch == 0:   
+        #     #     frame_batch   = []
+        #     #     palette_batch = []
+        # ================================================================================================================= #
 
     def get_frames(self, gif_file):
         gif = Image.open(gif_file)
