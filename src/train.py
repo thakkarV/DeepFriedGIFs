@@ -1,19 +1,17 @@
 import os
 import tensorflow as tf
 
-from encoders import vanilla_encoder
-from decoders import vanilla_decoder
+import encoders
+import decoders
 from arg_parser import parse_train_args
 from dataset_util import Dataset
 from loss import reconstruction_loss
 
 def train(args):
     # AttributeErrors not handled
-    # fail early if the encoder and decoder are not found
-    # encoder = getattr(encoders, args.encoder)
-    # decoder = getattr(decoders, args.decoder)
-    encoder = vanilla_encoder
-    decoder = vanilla_decoder
+    # fail early if the encoder and decoder are not found  
+    encoder = getattr(encoders, args.encoder)
+    decoder = getattr(decoders, args.decoder)
     dataset = Dataset(args.data_dir)
 
     # graph definition
@@ -113,7 +111,7 @@ def train(args):
         except KeyboardInterrupt:
             print("Interrupting training and saving weights")
             saver.save(sess, args.save_path)
-
+ 
 if __name__ == "__main__":
     args = parse_train_args()
     train(args)
