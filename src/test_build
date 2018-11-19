@@ -1,0 +1,10 @@
+!$#/bin/bash
+
+python train.py \
+-e vanilla_conv \
+-d vanilla_deconv \
+-w 1 \
+-o 1 \
+--data-dir ../test \
+-m ../test_output \
+--n-epoch 1 
