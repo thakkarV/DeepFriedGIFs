@@ -88,7 +88,7 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
-        "-o", "--window-offset",
+        "-o", "--target-offset",
         type = int,
         required = True,
         help = "Index offset of the target frame relative to the \
