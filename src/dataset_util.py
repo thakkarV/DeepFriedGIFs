@@ -184,7 +184,7 @@ class Dataset(object):
 
     
     def extract_batch(self, curator_state, frame_dict, palette_dict):
-        """Given the current curator state, and two dicionaries mappping
+        """Given the current curator state, and two dicionaries mapping
         the GIF index in curator state to its frames and colour palette,
         returns an extracted batch for a training round.
 
@@ -205,7 +205,8 @@ class Dataset(object):
                 shape = (
                     self.batch_size,
                     self.crop_height,
-                    self.crop_width),
+                    self.crop_width,
+                    1),
                 dtype = np.float16
             )
         else:
@@ -214,7 +215,8 @@ class Dataset(object):
                     self.batch_size,
                     self.window_size,
                     self.crop_height,
-                    self.crop_width),
+                    self.crop_width,
+                    1),
                 dtype = np.float16
             )
         
@@ -222,7 +224,8 @@ class Dataset(object):
             shape = (
             self.batch_size,
             self.crop_height,
-            self.crop_width),
+            self.crop_width,
+            1),
             dtype = np.float16
         )
 
@@ -243,20 +246,27 @@ class Dataset(object):
             frames = frame_dict[gif_idx]
             if self.window_size == 1:
                 slice_idx = curator_state[i, S_GIF_CUR_IDX]
-                frame_batch[i, :, :] = \
-                    frames[slice_idx, :, :].astype(np.float16)
+                frame_batch[i, :, :, 0] = np.expand_dims(
+                    frames[slice_idx, :, :].astype(np.float16),
+                    axis = 2
+                )
             else:
                 slice_start_idx = curator_state[i, S_GIF_CUR_IDX]
-                frame_batch[i, :, :, :] = frames[
-                    slice_start_idx : slice_start_idx+self.window_size-1,
-                    :,
-                    :
-                ].astype(np.float16)
+                frame_batch[i, :, :, :] = np.expand_dims(
+                    frames[
+                        slice_start_idx : slice_start_idx+self.window_size-1,
+                        :,
+                        :
+                    ].astype(np.float16),
+                    axis = 3
+                )
             
             # target
             target_idx = curator_state[i, S_GIF_CUR_IDX] + self.target_offset
-            target_batch[i, :, :] = \
-                frames[target_idx, :, :].astype(np.float16)
+            target_batch[i, :, :] = np.expand_dims(
+                frames[target_idx, :, :].astype(np.float16),
+                axis = 2
+            )
             
             # palette
             palette_batch[i, :] = palette_dict[gif_idx].astype(np.int8)
@@ -301,7 +311,6 @@ class Dataset(object):
                     self.crop_pos,
                     self.crop_height,
                     self.crop_width)
-                print("loaded GIF idx {}".format(i))
                 return i, frames, palette
             else:
                 # if these conditions are not met, then the GIF
