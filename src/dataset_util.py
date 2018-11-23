@@ -1,120 +1,386 @@
 from PIL import Image
+from sys import getsizeof
 import numpy as np
 import random
 import fnmatch
+import logging
 import os
-from sys import getsizeof
 
-def find_files(directory, pattern):
-    '''Recursively finds all files matching the pattern.'''
-    files = []
-    for root, _, filenames in os.walk(directory):
-        for filename in fnmatch.filter(filenames, pattern):
-            files.append(os.path.join(root, filename))
-    return files
+# index of various metadata into the state array
+S_GIF_IDX_IDX = 0
+S_GIF_CUR_IDX = 1
+S_GIF_LEN_IDX = 2
 
 class Dataset(object):
-    def __init__(self, datadir):
+    """
+    Dataset validation, processing and ingestion class
+    for supporting training and inference.
+    """
+
+    def __init__(
+            self,
+            datadir,
+            batch_size,
+            window_size,
+            target_offset,
+            crop_pos=None,
+            crop_height=None,
+            crop_width=None):
+        """Prameterizes the dataset based on the training requirements based on
+        compression window and cropping settings andvalidates input parameters.
+        
+        Arguments:
+            datadir {str} -- path to data
+            batch_size {int} -- batch size to be used for training
+            window_size {int} -- number of frames to be used for compression
+            target_offset {int} -- offset index of target frame from window
+        
+        Keyword Arguments:
+            crop_pos {str} -- area to keep within the GIF (default: {None})
+            crop_height {int} -- cropped height in pixels (default: {None})
+            crop_width  {int} -- cropped width in pixels  (default: {None})
+        
+        Raises:
+            Exception -- in case any input parameters are not valid.
+        """
+
+        # check for dataset validity now and fail fast
         self.datadir = datadir
-        self.files   = None
-
-    def gif_generator(
-        self,
-        batch_size=10,
-        gif_height=None,
-        gif_width=None,
-        crop_pos=None):
-
-        # if crop_pos is given, that means cropping is needed. therefore height and width MUST be given
-        if (crop_pos != None):
-            assert gif_height is not None
-            assert gif_width is not None
-
-        # if dataset has not been fetched yet, fetch it now
+        self.files = Dataset.find_files(self.datadir, "*.gif")
         if self.files is None:
-            self.files = find_files(self.datadir, "*.gif")
+            raise Exception(
+                "No GIF files found at dataset path: \n\t{}".format(datadir))
 
-        # shuffle every generator is restarted
+        # total number of gifs in the dataset
+        self.num_files = len(self.files)
+        
+        # check batch_size
+        if batch_size < 1:
+            raise Exception("Invalid batch size")
+        self.batch_size = batch_size
+        
+        if self.num_files < self.batch_size:
+            raise Exception(
+                "Dataset size must be at least equal to batch_size")
+
+        # check for window parameters
+        if window_size < 1 or target_offset < 0:
+            raise Exception("Invalid compression window configuration.")
+        self.window_size = window_size
+        self.target_offset = target_offset
+
+        # either all crop parameter must be specified or should be None
+        self.crop_height = crop_height
+        self.crop_width = crop_width
+        self.crop_pos = crop_pos
+        crop_args = [crop_pos, crop_height, crop_width]
+        if any(crop_args) and not all(crop_args):
+            raise Exception(
+                "Arguments for cropping need to all be None or not None")
+
+        valid_crop_pos = ["CC", "UL", "UR", "LL", "LR", None]
+        if crop_pos not in valid_crop_pos:
+            raise Exception(
+                "Invalid crop position. Valid options are {}"
+                    .format(valid_crop_pos)
+            )
+
+    def generate_training_batch(self):
+        """Generator for the dataset during trianing. Each call retruns
+        batch_size number of slices from the GIF dataset.
+        
+        Returns:
+            [np.ndarray, np.ndarray, np.ndarray] -- 
+                input compression window frames, target frame and GIF palettes
+        """
+        # shuffle everytime generator is restarted
         random.shuffle(self.files)
-
-        # total number of gifs in dataset
-        num_gifs = len(self.files)
-
-        # index of gif whose frames will be passed as current batch frames
-        curr_gif_idx = 0
-
-        # ================================================== HACK SOLUTION ================================================== #
-        # get frames in current gif
-        while curr_gif_idx < num_gifs:
-            # all frames and palette of current gif
-            frames, palette = self.get_frames(self.files[curr_gif_idx])
-
-            # now crop frames if needed
-            if (crop_pos != None):
-                # will return None if the gif cannot be cropped
-                frames = self.crop_frames(frames, crop_pos, gif_height, gif_width)
-            
-            # check if cropping worked, otherwise do not add current gif to batch
-            if frames.all() != None:
-                num_frames_in_gif = frames.shape[0]
-                
-                # yield frame by frame
-                for frame_idx in range(0, num_frames_in_gif):
-                    # expand dims added to ensure yield output is of shape (batch_size, height, width, channels)
-                    yield np.expand_dims(np.expand_dims(frames[frame_idx, :, :], axis=-1), axis=0), palette
-
-            curr_gif_idx += 1
-        # ================================================================================================================= #
         
-        # ===================================================== FIXME ===================================================== #
-        # i = 0
-        # num_in_batch = 0
+        # init booking data structures: dataset curators
+        # each row stores the following metadata about
+        # the GIFs in the current batch
+        # curator_state[i, 0] := index of the GIF in self.files
+        # curator_state[i, 1] := index of current window start frame
+        # curator_state[i, 2] := total number of frames in the current GIF
+        # NOTE: this implies that curr_gif_idx = max(curator_state[:, 0])
+        curator_state = np.empty(shape=(self.batch_size, 3), dtype=np.int32)
+
+        # the following two dictionaries map the index into self.files
+        # to the frames and colour palette of those GIFs
+        frame_dict   = dict()
+        palette_dict = dict()
+        
+        # init curator state for the first round
+        # set initial index to -1 so that we use self.files[0]
+        curator_state.fill(-1)
+        next_batch_is_available = self.update_curator_state(
+            curator_state, frame_dict, palette_dict)
+        
+        while next_batch_is_available:
+            # get current batch
+            frame_batch, target_batch, palette_batch = \
+                self.extract_batch(curator_state, frame_dict, palette_dict)
+
+            # update curator state
+            next_batch_is_available = self.update_curator_state(
+                curator_state, frame_dict, palette_dict)
+
+            yield frame_batch, target_batch, palette_batch
+        
     
-        # frame_batch   = []
-        # palette_batch = []
-        
-        # while i < num_gifs:
-        #     frames, palette = self.get_frames(self.files[i])
-            
-        #     # now crop frames if needed
-        #     if (crop_pos != None):
-        #         # will return None if the gif cannot be cropped
-        #         frames = self.crop_frames(frames, crop_pos, gif_height, gif_width)
-            
-        #     # check if cropping worked, otherwise do not add current gif to batch
-        #     if frames.all() != None:
-        #         num_frames_in_gif = frames.shape[0]
+    def update_curator_state(self, curator_state, frame_dict, palette_dict):
+        """handles the updates to the GIF metadata for all GIFs
+        in the current batch. Loads in new GIFs if required.
+
+        Arguments:
+            curator_state {np.ndarray} -- current state of the curator array
+                that needs updating
+            frame_dict   {dict} -- maps the GIF index in self.files to frames
+            palette_dict {dict} -- maps the GIF index in self.files to palette
+
+        Retruns:
+            boolean -- True if at least one more batch can be generated
+                for the next round. False otherwise.
+        """
+        # first we check if all the GIFs are still valid
+        # if not, we swap them out for new ones
+        is_next_batch_available = True
+        for i in range(self.batch_size):
+            # does this GIF still have enough frames left?
+            # +1 is to account for zero indexing
+            required_len = curator_state[i, S_GIF_CUR_IDX] + 1 \
+                + max(self.window_size, self.target_offset)
+
+            # TODO: make sure this predicate is correct
+            if required_len <= curator_state[i, S_GIF_LEN_IDX]:
+                # did not run out, increment window start
+                curator_state[i, S_GIF_CUR_IDX] += 1
+            else:
+                # ran out, load new GIF instead
+                # get new GIF according to constrains
+                curr_gif_idx = max(curator_state[:, S_GIF_IDX_IDX])
+                new_gif_idx, new_frames, new_palette = \
+                    self.load_gif_constrained(curr_gif_idx + 1)
                 
-        #         for frame_i in range(0,num_frames_in_gif):
-        #             frame_batch.append(np.expand_dims(frames[frame_i,:,:], axis=-1))
-        #             palette_batch.append(palette)
-        #             num_in_batch += 1
+                if new_gif_idx is not None:
+                    # update the state with the new GIF
+                    curator_state[i, S_GIF_IDX_IDX] = new_gif_idx
+                    curator_state[i, S_GIF_CUR_IDX] = 0
+                    curator_state[i, S_GIF_LEN_IDX] = np.shape(new_frames)[0]
 
-        #             # got complete batch
-        #             if num_in_batch == batch_size:
-        #                 # reset number in batch and yield
-        #                 num_in_batch = 0
-        #                 yield frame_batch, palette_batch
-                    
-        #             if num_in_batch == 0:   
-        #                 frame_batch   = []
-        #                 palette_batch = []
+                    # add new frames/palette back to dicts
+                    frame_dict[new_gif_idx]   = new_frames
+                    palette_dict[new_gif_idx] = new_palette
+                else:
+                    # if run out of GIF files to be picked next,
+                    # we cannot abort this genrator run so relplay this one GIF
+                    # for the current batch and cancel further runs afterwards.
+                    # This replay will only happen once for the last batch
+                    # at the end of the list of GIFs and at worst to all
+                    # GIFs in the batch
+                    is_next_batch_available = False
 
-        #     i+= 1
+        return is_next_batch_available
 
-        #     # # got complete batch
-        #     # if num_in_batch == batch_size:
-        #     #     # reset number in batch and yield
-        #     #     num_in_batch = 0
-        #     #     yield frame_batch, palette_batch
+    
+    def extract_batch(self, curator_state, frame_dict, palette_dict):
+        """Given the current curator state, and two dicionaries mappping
+        the GIF index in curator state to its frames and colour palette,
+        returns an extracted batch for a training round.
 
-        #     # # check if num_in_batch has been reset, and reset the batch arrays
-        #     # if num_in_batch == 0:   
-        #     #     frame_batch   = []
-        #     #     palette_batch = []
-        # ================================================================================================================= #
+        Arguments:
+            curator_state {np.ndarray} -- metadata of the batch
+            frame_dict    {dict} -- {int(gif_index) : np.array(gif_frames )}
+            palette_dict  {dict} -- {int(gif_index) : np.array(gif_palette)}
 
-    def get_frames(self, gif_file):
+        Returns:
+            [np.ndarray, np.ndarray, np.ndarray] --
+                arrays representing the compression window input
+                frames, target frame and the GIF colour palette
+        """
+        # TODO: sanity check this mess of colons
+        # need to account for the placeholder shape for window size
+        if self.window_size == 1:
+            frame_batch = np.empty(
+                shape = (
+                    self.batch_size,
+                    self.crop_height,
+                    self.crop_width),
+                dtype = np.float16
+            )
+        else:
+            frame_batch = np.empty(
+                shape = (
+                    self.batch_size,
+                    self.window_size,
+                    self.crop_height,
+                    self.crop_width),
+                dtype = np.float16
+            )
+        
+        target_batch = np.empty(
+            shape = (
+            self.batch_size,
+            self.crop_height,
+            self.crop_width),
+            dtype = np.float16
+        )
+
+        palette_batch = np.empty(
+            shape = (
+                self.batch_size,
+                768
+            ),
+            dtype = np.int8
+        )
+
+        # slice the input GIFs to window_size, cast to type,
+        # and insert into batch np.ndarray 
+        for i in range(self.batch_size):
+            gif_idx = curator_state[i, S_GIF_IDX_IDX]            
+            
+            # frames
+            frames = frame_dict[gif_idx]
+            if self.window_size == 1:
+                slice_idx = curator_state[i, S_GIF_CUR_IDX]
+                frame_batch[i, :, :] = \
+                    frames[slice_idx, :, :].astype(np.float16)
+            else:
+                slice_start_idx = curator_state[i, S_GIF_CUR_IDX]
+                frame_batch[i, :, :, :] = frames[
+                    slice_start_idx : slice_start_idx+self.window_size-1,
+                    :,
+                    :
+                ].astype(np.float16)
+            
+            # target
+            target_idx = curator_state[i, S_GIF_CUR_IDX] + self.target_offset
+            target_batch[i, :, :] = \
+                frames[target_idx, :, :].astype(np.float16)
+            
+            # palette
+            palette_batch[i, :] = palette_dict[gif_idx].astype(np.int8)
+
+        return frame_batch, target_batch, palette_batch
+
+
+    def load_gif_constrained(self, start_file_idx):
+        """Loads the next eligilble GIF for the batch from self.files
+        starting from the given index. Checks for sufficient GIF length
+        and GIF dimentions to make sure they are valid. Retruns None when
+        dataset runs of of valid GIFs.
+        
+        Arguments:
+            start_file_idx {int} -- inclusive index in self.files
+                to start the search from
+
+        Retruns:
+            [int, np.ndarray, np.ndarray] --
+                GIF file index, cropped frames and colour palette
+        """
+        # TODO: make sure the edge cases are correct here
+        i = start_file_idx
+        while i < self.num_files:
+            frames, palette = None, None
+            # NOTE: this is for the pesky case of palette == None
+            while palette is None and i < self.num_files:
+                frames, palette = Dataset.load_gif(self.files[i])
+                i += 1
+            
+            if palette is None:
+                return None, None, None
+            
+            required_len = max(self.window_size, self.target_offset)
+            gif_len, gif_height, git_width = np.shape(frames)
+            if  (gif_len    >= required_len     and
+                 gif_height >= self.crop_height and
+                 git_width  >= self.crop_width):
+                # found a GIF that is large enough, return it
+                frames = Dataset.crop_frames(
+                    frames,
+                    self.crop_pos,
+                    self.crop_height,
+                    self.crop_width)
+                print("loaded GIF idx {}".format(i))
+                return i, frames, palette
+            else:
+                # if these conditions are not met, then the GIF
+                # is not large enough for long enough for trianing
+                del frames
+                del palette
+                i += 1
+        
+        # ran out of data
+        return None, None, None
+
+
+    @staticmethod
+    def crop_frames(frames, pos, crop_height, crop_width):
+        """Crops a loaded GIF according to cropping params
+        
+        Arguments:
+            frames {np.ndarray} -- input frames that are to be cropped
+            pos {str} -- Position of area to keep within the GIF
+            crop_height {int} -- Cropped height in pixels
+            crop_width  {int} -- Cropped width in pixels
+        
+        Returns:
+            np.ndarray -- cropped frames
+        """
+        _, true_x, true_y = frames.shape
+        if true_x < crop_height or true_y < crop_width:
+            return None
+        elif pos == "UL":
+            # crop and keep upper left
+            return frames[:, 0:crop_height, 0:crop_width]
+        elif pos == "LL":
+            # crop and keep lower left
+            return frames[:, -crop_height:, 0:crop_width]
+        elif pos == "UR":
+            # crop and keep upper right
+            return frames[:, 0:crop_height, -crop_width:]
+        elif pos == "LR":
+            # crop and keep lower right
+            return frames[:, -crop_height:, -crop_width:]
+        else:
+            # crop and keep center
+            # find center of image
+            mid_x = int(true_x/2)
+            mid_y = int(true_y/2)
+
+            # find point to begin cropping at Len(cropped/2)-midpoint
+            crop_beg_x = mid_x - int(crop_height/2)
+            crop_beg_y = mid_y - int(crop_width/2)
+
+            # end cropping by incrementing size
+            crop_end_x = crop_beg_x + crop_height
+            crop_end_y = crop_beg_y + crop_width
+
+            return frames[:, crop_beg_x:crop_end_x, crop_beg_y:crop_end_y]
+
+
+    @staticmethod
+    def find_files(directory, pattern):
+        '''Recursively finds all files matching the pattern.'''
+        files = []
+        for root, _, filenames in os.walk(directory):
+            for filename in fnmatch.filter(filenames, pattern):
+                files.append(os.path.join(root, filename))
+        return files
+    
+
+    @staticmethod
+    def load_gif(gif_file):
+        """Reads a single GIF and returns the frames and the colour
+        palette as numpy arrays.
+        
+        Arguments:
+            gif_file {str} -- path to GIF file
+        
+        Returns:
+            [np.ndarray, np.ndarray] -- raw frames and colour palette 
+        """
+
         gif = Image.open(gif_file)
         frames = []
         try:
@@ -124,65 +390,33 @@ class Dataset(object):
                 frame = gif.copy()
                 if idx == 0:
                     palette = frame.getpalette()
+                    # TODO: deal with this None palette case
+                    if palette is None:
+                        return None, None
                 else:
                     frame.putpalette(palette)
                 idx += 1
                 frames.append(np.array(frame))
+
         except EOFError:
             gif.close()
             return np.array(frames), np.array(palette)
 
-    def crop_frames(self, frames, pos, gif_height, gif_width):
-        for frame in frames:
-            num_frames, true_x, true_y = frames.shape
-            if true_x < gif_height or true_y < gif_width:
-                return None
-            elif   pos == "UL":
-                # crop and keep upper left
-                return frames[:,0:gif_height,0:gif_width]
-            elif pos == "LL":
-                # crop and keep lower left
-                return frames[:,-gif_height:,0:gif_width]
-            elif pos == "UR":
-                # crop and keep upper right
-                return frames[:,0:gif_height,-gif_width:]
-            elif pos == "LR":
-                # crop and keep lower right
-                return frames[:,-gif_height:,-gif_width:]
-            elif pos == "CC":
-                # crop and keep center
-
-                # find center of image
-                mid_x = int(true_x/2)
-                mid_y = int(true_y/2)
-
-                # find point to begin cropping at Len(cropped/2)-midpoint
-                crop_beg_x = mid_x - int(gif_height/2)
-                crop_beg_y = mid_y - int(gif_width/2)
-
-                # end cropping by incrementing size
-                crop_end_x = crop_beg_x + gif_height
-                crop_end_y = crop_beg_y + gif_width
-
-                return frames[:,crop_beg_x:crop_end_x,crop_beg_y:crop_end_y]
-            else:
-                raise Exception("Invalid crop position.")
-
-
-def test(path):
-    dataset = Dataset(path)
-    for gif, palette in dataset.gif_generator(gif_height=100, gif_width=100, crop_pos=None):
-        print("num in batch: ", len(gif))
-        print(gif[0].shape)
-        print(len(palette[0]))
-        print(palette[0].dtype)
-        ar = np.array(palette[0], dtype=np.int8)
-        print(ar.dtype)
-        print(getsizeof(palette[0]))
-        print(getsizeof(ar))
-
-
-        # frame.save("test{}.png".format(idx), **frame.info)
 
 if __name__ == "__main__":
-    test("./../data/train/")
+    dataset = Dataset(
+        "./../data/train/",
+        batch_size=2,
+        window_size=2,
+        target_offset=1,
+        crop_height=64,
+        crop_width=64,
+        crop_pos="CC")
+    
+    for i, batch in enumerate(dataset.generate_training_batch()):
+        print(i)
+        print(np.shape(batch[0]))
+        print(np.shape(batch[1]))
+        print(np.shape(batch[2]))
+        
+    print("Total of {} batches generated".format(i))
