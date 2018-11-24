@@ -1,8 +1,8 @@
 #!/bin/bash
 
 python train.py \
--e vanilla_conv \
--d vanilla_deconv \
+-e vanilla_encoder \
+-d vanilla_decoder \
 -w 1 \
 -o 0 \
 -cp CC \
