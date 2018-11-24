@@ -105,7 +105,7 @@ def train(args):
         try:
             while epoch < args.n_epoch:
                 for input_frames, target_frames, palettes in \
-                    dataset.gif_generator():
+                    dataset.generate_training_batch():
 
                     loss, _, summary = sess.run(
                         [loss_op, train_op, summary_op],
