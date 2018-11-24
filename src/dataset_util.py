@@ -5,6 +5,7 @@ import random
 import fnmatch
 import logging
 import os
+import pdb
 
 # index of various metadata into the state array
 S_GIF_IDX_IDX = 0
@@ -28,18 +29,18 @@ class Dataset(object):
             crop_width=None):
         """Prameterizes the dataset based on the training requirements based on
         compression window and cropping settings andvalidates input parameters.
-        
+
         Arguments:
             datadir {str} -- path to data
             batch_size {int} -- batch size to be used for training
             window_size {int} -- number of frames to be used for compression
             target_offset {int} -- offset index of target frame from window
-        
+
         Keyword Arguments:
             crop_pos {str} -- area to keep within the GIF (default: {None})
             crop_height {int} -- cropped height in pixels (default: {None})
             crop_width  {int} -- cropped width in pixels  (default: {None})
-        
+
         Raises:
             Exception -- in case any input parameters are not valid.
         """
@@ -53,12 +54,12 @@ class Dataset(object):
 
         # total number of gifs in the dataset
         self.num_files = len(self.files)
-        
+
         # check batch_size
         if batch_size < 1:
             raise Exception("Invalid batch size")
         self.batch_size = batch_size
-        
+
         if self.num_files < self.batch_size:
             raise Exception(
                 "Dataset size must be at least equal to batch_size")
@@ -85,17 +86,23 @@ class Dataset(object):
                     .format(valid_crop_pos)
             )
 
+        # NOTE: this is for the FCN case, where a single batch
+        # can have GIFs of different sizes, and we dont want to deal with that
+        if crop_pos is None and batch_size > 1:
+            raise Exception(
+                "Batch sizes larger than 1 not supported for uncropped frames")
+
     def generate_training_batch(self):
         """Generator for the dataset during trianing. Each call retruns
         batch_size number of slices from the GIF dataset.
-        
+
         Returns:
-            [np.ndarray, np.ndarray, np.ndarray] -- 
+            [np.ndarray, np.ndarray, np.ndarray] --
                 input compression window frames, target frame and GIF palettes
         """
         # shuffle everytime generator is restarted
         random.shuffle(self.files)
-        
+
         # init booking data structures: dataset curators
         # each row stores the following metadata about
         # the GIFs in the current batch
@@ -109,13 +116,13 @@ class Dataset(object):
         # to the frames and colour palette of those GIFs
         frame_dict   = dict()
         palette_dict = dict()
-        
+
         # init curator state for the first round
         # set initial index to -1 so that we use self.files[0]
         curator_state.fill(-1)
         next_batch_is_available = self.update_curator_state(
             curator_state, frame_dict, palette_dict)
-        
+
         while next_batch_is_available:
             # get current batch
             frame_batch, target_batch, palette_batch = \
@@ -126,8 +133,8 @@ class Dataset(object):
                 curator_state, frame_dict, palette_dict)
 
             yield frame_batch, target_batch, palette_batch
-        
-    
+
+
     def update_curator_state(self, curator_state, frame_dict, palette_dict):
         """handles the updates to the GIF metadata for all GIFs
         in the current batch. Loads in new GIFs if required.
@@ -161,7 +168,7 @@ class Dataset(object):
                 curr_gif_idx = max(curator_state[:, S_GIF_IDX_IDX])
                 new_gif_idx, new_frames, new_palette = \
                     self.load_gif_constrained(curr_gif_idx + 1)
-                
+
                 if new_gif_idx is not None:
                     # update the state with the new GIF
                     curator_state[i, S_GIF_IDX_IDX] = new_gif_idx
@@ -182,7 +189,7 @@ class Dataset(object):
 
         return is_next_batch_available
 
-    
+
     def extract_batch(self, curator_state, frame_dict, palette_dict):
         """Given the current curator state, and two dicionaries mapping
         the GIF index in curator state to its frames and colour palette,
@@ -199,14 +206,18 @@ class Dataset(object):
                 frames, target frame and the GIF colour palette
         """
         # TODO: sanity check this mess of colons
+        # TODO: sanity check this mess of colons
+        # NOTE: image dimentions will change every time in case of FCN
+        # so take care of that every time we start
+        # we also only look at the 0th index, because we only support
+        # batch_size=1 training for FCN for now
+        gif_height = np.shape(frame_dict[curator_state[0, S_GIF_IDX_IDX]])[1]
+        gif_width  = np.shape(frame_dict[curator_state[0, S_GIF_IDX_IDX]])[2]
+
         # need to account for the placeholder shape for window size
         if self.window_size == 1:
             frame_batch = np.empty(
-                shape = (
-                    self.batch_size,
-                    self.crop_height,
-                    self.crop_width,
-                    1),
+                shape = (self.batch_size, gif_height, gif_width, 1),
                 dtype = np.float16
             )
         else:
@@ -214,60 +225,49 @@ class Dataset(object):
                 shape = (
                     self.batch_size,
                     self.window_size,
-                    self.crop_height,
-                    self.crop_width,
+                    gif_height,
+                    gif_width,
                     1),
                 dtype = np.float16
             )
-        
+
         target_batch = np.empty(
-            shape = (
-            self.batch_size,
-            self.crop_height,
-            self.crop_width,
-            1),
+            shape = (self.batch_size, gif_height, gif_width, 1),
             dtype = np.float16
         )
 
         palette_batch = np.empty(
-            shape = (
-                self.batch_size,
-                768
-            ),
+            shape = (self.batch_size, 768),
             dtype = np.int8
         )
 
         # slice the input GIFs to window_size, cast to type,
-        # and insert into batch np.ndarray 
+        # and insert into batch np.ndarray
         for i in range(self.batch_size):
-            gif_idx = curator_state[i, S_GIF_IDX_IDX]            
-            
+            gif_idx = curator_state[i, S_GIF_IDX_IDX]
+
             # frames
             frames = frame_dict[gif_idx]
+            slice_idx = curator_state[i, S_GIF_CUR_IDX]
             if self.window_size == 1:
-                slice_idx = curator_state[i, S_GIF_CUR_IDX]
                 frame_batch[i, :, :, :] = np.expand_dims(
                     frames[slice_idx, :, :].astype(np.float16),
                     axis = 2
                 )
             else:
-                slice_start_idx = curator_state[i, S_GIF_CUR_IDX]
                 frame_batch[i, :, :, :] = np.expand_dims(
-                    frames[
-                        slice_start_idx : slice_start_idx+self.window_size-1,
-                        :,
-                        :
-                    ].astype(np.float16),
+                    frames[slice_idx : slice_idx+self.window_size, :, :]
+                        .astype(np.float16),
                     axis = 3
                 )
-            
+
             # target
             target_idx = curator_state[i, S_GIF_CUR_IDX] + self.target_offset
             target_batch[i, :, :] = np.expand_dims(
                 frames[target_idx, :, :].astype(np.float16),
                 axis = 2
             )
-            
+
             # palette
             palette_batch[i, :] = palette_dict[gif_idx].astype(np.int8)
 
@@ -279,7 +279,7 @@ class Dataset(object):
         starting from the given index. Checks for sufficient GIF length
         and GIF dimentions to make sure they are valid. Retruns None when
         dataset runs of of valid GIFs.
-        
+
         Arguments:
             start_file_idx {int} -- inclusive index in self.files
                 to start the search from
@@ -296,29 +296,33 @@ class Dataset(object):
             while palette is None and i < self.num_files:
                 frames, palette = Dataset.load_gif(self.files[i])
                 i += 1
-            
+
             if palette is None:
                 return None, None, None
-            
+
             required_len = max(self.window_size, self.target_offset)
             gif_len, gif_height, git_width = np.shape(frames)
-            if  (gif_len    >= required_len     and
-                 gif_height >= self.crop_height and
-                 git_width  >= self.crop_width):
-                # found a GIF that is large enough, return it
-                frames = Dataset.crop_frames(
-                    frames,
-                    self.crop_pos,
-                    self.crop_height,
-                    self.crop_width)
-                return i, frames, palette
+            if gif_len >= required_len:
+                # no cropping needed in FCN training
+                if self.crop_pos is None:
+                    return i, frames, palette
+
+                # crop otherwise
+                if (gif_height >= self.crop_height and
+                    git_width  >= self.crop_width):
+                    frames = Dataset.crop_frames(
+                        frames,
+                        self.crop_pos,
+                        self.crop_height,
+                        self.crop_width)
+                    return i, frames, palette
             else:
                 # if these conditions are not met, then the GIF
                 # is not large enough for long enough for trianing
                 del frames
                 del palette
                 i += 1
-        
+
         # ran out of data
         return None, None, None
 
@@ -326,13 +330,13 @@ class Dataset(object):
     @staticmethod
     def crop_frames(frames, pos, crop_height, crop_width):
         """Crops a loaded GIF according to cropping params
-        
+
         Arguments:
             frames {np.ndarray} -- input frames that are to be cropped
             pos {str} -- Position of area to keep within the GIF
             crop_height {int} -- Cropped height in pixels
             crop_width  {int} -- Cropped width in pixels
-        
+
         Returns:
             np.ndarray -- cropped frames
         """
@@ -376,18 +380,18 @@ class Dataset(object):
             for filename in fnmatch.filter(filenames, pattern):
                 files.append(os.path.join(root, filename))
         return files
-    
+
 
     @staticmethod
     def load_gif(gif_file):
         """Reads a single GIF and returns the frames and the colour
         palette as numpy arrays.
-        
+
         Arguments:
             gif_file {str} -- path to GIF file
-        
+
         Returns:
-            [np.ndarray, np.ndarray] -- raw frames and colour palette 
+            [np.ndarray, np.ndarray] -- raw frames and colour palette
         """
 
         gif = Image.open(gif_file)
@@ -413,19 +417,32 @@ class Dataset(object):
 
 
 if __name__ == "__main__":
+
+    # test FCN case with bs = 1 -- no cropping
     dataset = Dataset(
         "./../data/train/",
-        batch_size=2,
-        window_size=2,
-        target_offset=1,
-        crop_height=64,
-        crop_width=64,
-        crop_pos="CC")
-    
+        batch_size=1,
+        window_size=3,
+        target_offset=1)
     for i, batch in enumerate(dataset.generate_training_batch()):
         print(i)
         print(np.shape(batch[0]))
         print(np.shape(batch[1]))
         print(np.shape(batch[2]))
-        
-    print("Total of {} batches generated".format(i))
+        if i > 512: break
+
+    # test non FCN case -- cropping
+    dataset = Dataset(
+        "./../data/train/",
+        batch_size=64,
+        window_size=3,
+        target_offset=1,
+        crop_pos="CC",
+        crop_height=64,
+        crop_width=64)
+    for i, batch in enumerate(dataset.generate_training_batch()):
+        print(i)
+        print(np.shape(batch[0]))
+        print(np.shape(batch[1]))
+        print(np.shape(batch[2]))
+        if i > 2048: break
