@@ -75,7 +75,7 @@ def parse_decompress_args():
         required = True,
         help = "Name of the decoder model to be used."
     )
-    
+
     return parser.parse_args()
 
 
@@ -96,7 +96,7 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
-        "--data-dir",
+        "--data",
         type = str,
         default = "./data/test",
         required = True,

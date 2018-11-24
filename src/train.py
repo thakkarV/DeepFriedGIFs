@@ -14,7 +14,7 @@ def train(args):
     encoder = getattr(encoders, args.encoder)
     decoder = getattr(decoders, args.decoder)
     dataset = Dataset(
-        args.data_dir,
+        args.data,
         args.batch_size,
         args.window_size,
         args.target_offset,
