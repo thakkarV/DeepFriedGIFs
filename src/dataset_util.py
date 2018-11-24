@@ -246,7 +246,7 @@ class Dataset(object):
             frames = frame_dict[gif_idx]
             if self.window_size == 1:
                 slice_idx = curator_state[i, S_GIF_CUR_IDX]
-                frame_batch[i, :, :, 0] = np.expand_dims(
+                frame_batch[i, :, :, :] = np.expand_dims(
                     frames[slice_idx, :, :].astype(np.float16),
                     axis = 2
                 )
