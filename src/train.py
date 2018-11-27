@@ -118,10 +118,19 @@ def train(args):
                     summary_writer.add_summary(summary)
 
                 print("Done epoch {}".format(epoch))
-                saver.save(sess, args.save_path)
+                saver.save(
+                    sess,
+                    os.path.join(args.save_path, "model.ckpt"),
+                    global_step = epoch
+                )
+
         except KeyboardInterrupt:
             print("Interrupting training and saving weights")
-            saver.save(sess, args.save_path)
+            saver.save(
+                sess,
+                os.path.join(args.save_path, "model.ckpt"),
+                global_step = epoch
+            )
 
 
 if __name__ == "__main__":
