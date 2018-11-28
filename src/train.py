@@ -130,6 +130,7 @@ def train(args):
                     os.path.join(args.save_path, "model.ckpt"),
                     global_step = epoch
                 )
+                epoch += 1
 
         except KeyboardInterrupt:
             print("Interrupting training and saving weights")
