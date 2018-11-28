@@ -1,8 +1,12 @@
 #!/bin/bash
 
+#$ -m beas
+#$ -pe omp 4
+#$ -l mem_total=16G
+#$ -l gpus=0.25
+#$ -l gpu_c=6.0
+
 module load python/3.6.2
-# module load cuda/9.1
-# module load cudnn/7.1
 module load tensorflow/r1.10
 
 python train.py \
