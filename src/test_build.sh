@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 #$ -m beas
 #$ -pe omp 4
