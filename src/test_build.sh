@@ -2,7 +2,7 @@
 
 #$ -m beas
 #$ -pe omp 4
-#$ -l mem_total=16G
+#$ -l mem_total=64G
 #$ -l gpus=0.25
 #$ -l gpu_c=6.0
 
