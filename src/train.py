@@ -121,8 +121,8 @@ def train(args):
                     summary_writer.add_summary(summary)
 
                     itr += 1
-                    if 0 == itr % 1000:
-                        print("Itr {} loss = {}".format((epoch+1)*itr, loss))
+                    if itr % args.log_interval == 0:
+                        print("Itr {} loss = {}".format((epoch)*itr, loss))
 
                 print("Done epoch {}".format(epoch))
                 saver.save(
