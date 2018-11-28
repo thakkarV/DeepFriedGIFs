@@ -23,6 +23,9 @@ def train(args):
         args.crop_width
     )
 
+    if not os.path.exists(args.save_path):
+        os.makedirs(args.save_path)
+
     # graph definition
     with tf.Graph().as_default() as g:
         # placeholders
