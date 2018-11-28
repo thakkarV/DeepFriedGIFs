@@ -122,7 +122,7 @@ def train(args):
 
                     itr += 1
                     if 0 == itr % 1000:
-                        print("Itr {} loss = {}".format(epoch*itr, loss))
+                        print("Itr {} loss = {}".format((epoch+1)*itr, loss))
 
                 print("Done epoch {}".format(epoch))
                 saver.save(
