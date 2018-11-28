@@ -5,6 +5,7 @@ import random
 import fnmatch
 import logging
 import os
+import sys
 import pdb
 
 # index of various metadata into the state array
@@ -394,7 +395,16 @@ class Dataset(object):
             [np.ndarray, np.ndarray] -- raw frames and colour palette
         """
 
-        gif = Image.open(gif_file)
+        # deal with corrupted or otherwise unreadable GIF files
+        try:
+            gif = Image.open(gif_file)
+        except Exception as e:
+            print("Could not open GIF file at path {}".format(gif_file),
+                file = sys.stderr)
+            print("\tGot exception while trying to open: e=\n\t{}".format(e),
+                file = sys.stderr)
+            return None, None
+
         frames = []
         try:
             idx = 0
