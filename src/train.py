@@ -107,6 +107,7 @@ def train(args):
         # Main training loop
         try:
             while epoch < args.n_epoch:
+                itr = 0
                 for input_frames, target_frames, palettes in \
                     dataset.generate_training_batch():
 
@@ -117,8 +118,11 @@ def train(args):
                             T: target_frames
                         }
                     )
-
                     summary_writer.add_summary(summary)
+
+                    itr += 1
+                    if 0 == itr % 1000:
+                        print("Itr {} loss = {}".format(epoch*itr, loss))
 
                 print("Done epoch {}".format(epoch))
                 saver.save(
