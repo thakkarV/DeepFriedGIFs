@@ -122,21 +122,21 @@ def add_common_args(parser):
     parser.add_argument(
         "-ch", "--crop-height",
         type = int,
-        default = 100,
+        default = None,
         required = False,
-        help = "cropping width for gif."
+        help = "Cropping width for GIF."
     )
 
     parser.add_argument(
         "-cw", "--crop-width",
         type = int,
-        default = 100,
+        default = None,
         required = False,
-        help = "cropping width for gif."
+        help = "Cropping width for GIF."
     )
 
     parser.add_argument(
-        "-cp", "--crop_pos",
+        "-cp", "--crop-pos",
         type = str,
         default = None,
         required = False,

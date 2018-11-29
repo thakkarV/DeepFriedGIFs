@@ -15,6 +15,8 @@ python train.py \
 -w 1 \
 -o 0 \
 -cp CC \
+-ch 64 \
+-cw 64 \
 -m ../runs/tests/vanilla/ \
 --data ../data/train \
 --n-epoch 10 \
