@@ -17,4 +17,6 @@ python train.py \
 -cp CC \
 -m ../runs/tests/vanilla/ \
 --data ../data/train \
---n-epoch 1
+--n-epoch 10 \
+--log-interval 10
+

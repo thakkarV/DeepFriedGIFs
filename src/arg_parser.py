@@ -112,6 +112,14 @@ def add_common_args(parser):
     )
 
     parser.add_argument(
+        "--log-interval",
+        type = int,
+        default = 100,
+        required = False,
+        help = "Number of iterations/batches after which to print train summary"
+    )
+
+    parser.add_argument(
         "-ch", "--crop-height",
         type = int,
         default = 100,
