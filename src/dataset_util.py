@@ -219,7 +219,7 @@ class Dataset(object):
         if self.window_size == 1:
             frame_batch = np.empty(
                 shape = (self.batch_size, gif_height, gif_width, 1),
-                dtype = np.float16
+                dtype = np.float32
             )
         else:
             frame_batch = np.empty(
@@ -229,12 +229,12 @@ class Dataset(object):
                     gif_height,
                     gif_width,
                     1),
-                dtype = np.float16
+                dtype = np.float32
             )
 
         target_batch = np.empty(
             shape = (self.batch_size, gif_height, gif_width, 1),
-            dtype = np.float16
+            dtype = np.float32
         )
 
         palette_batch = np.empty(
@@ -252,20 +252,20 @@ class Dataset(object):
             slice_idx = curator_state[i, S_GIF_CUR_IDX]
             if self.window_size == 1:
                 frame_batch[i, :, :, :] = np.expand_dims(
-                    frames[slice_idx, :, :].astype(np.float16),
+                    frames[slice_idx, :, :].astype(np.float32),
                     axis = 2
                 )
             else:
                 frame_batch[i, :, :, :] = np.expand_dims(
                     frames[slice_idx : slice_idx+self.window_size, :, :]
-                        .astype(np.float16),
+                        .astype(np.float32),
                     axis = 3
                 )
 
             # target
             target_idx = curator_state[i, S_GIF_CUR_IDX] + self.target_offset
             target_batch[i, :, :] = np.expand_dims(
-                frames[target_idx, :, :].astype(np.float16),
+                frames[target_idx, :, :].astype(np.float32),
                 axis = 2
             )
 
