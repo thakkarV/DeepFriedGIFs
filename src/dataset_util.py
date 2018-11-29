@@ -110,7 +110,7 @@ class Dataset(object):
         # curator_state[i, 0] := index of the GIF in self.files
         # curator_state[i, 1] := index of current window start frame
         # curator_state[i, 2] := total number of frames in the current GIF
-        # NOTE: this implies that curr_gif_idx = max(curator_state[:, 0])
+        # NOTE: this implies that curr_gif_seek_head = max(curator_state[:, 0])
         curator_state = np.empty(shape=(self.batch_size, 3), dtype=np.int32)
 
         # the following two dictionaries map the index into self.files
@@ -166,11 +166,17 @@ class Dataset(object):
             else:
                 # ran out, load new GIF instead
                 # get new GIF according to constrains
-                curr_gif_idx = max(curator_state[:, S_GIF_IDX_IDX])
+                curr_gif_idx = curator_state[i, S_GIF_IDX_IDX]
+                curr_gif_seek_head = max(curator_state[:, S_GIF_IDX_IDX])
                 new_gif_idx, new_frames, new_palette = \
-                    self.load_gif_constrained(curr_gif_idx + 1)
+                    self.load_gif_constrained(curr_gif_seek_head + 1)
 
                 if new_gif_idx is not None:
+                    # delete the old GIF from dicts
+                    if curr_gif_idx != -1:
+                        del frame_dict[curr_gif_idx]
+                        del palette_dict[curr_gif_idx]
+
                     # update the state with the new GIF
                     curator_state[i, S_GIF_IDX_IDX] = new_gif_idx
                     curator_state[i, S_GIF_CUR_IDX] = 0
