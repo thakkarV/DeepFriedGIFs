@@ -1,1 +1,1 @@
-from .vanilla_conv import vanilla_encoder
+from .vgg_large_encoder import vgg_large_encoder

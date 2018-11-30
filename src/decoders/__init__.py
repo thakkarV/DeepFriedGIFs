@@ -1,1 +1,1 @@
-from .vanilla_deconv import vanilla_decoder
+from .vgg_large_decoder import vgg_large_decoder
