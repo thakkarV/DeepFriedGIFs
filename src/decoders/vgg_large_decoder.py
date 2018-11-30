@@ -5,7 +5,7 @@ import pdb
 
 
 # TODO: in what order should it be upscaled? (upscale -> conv OR conv -> upscale)
-def vanilla_decoder(z, args, reuse=False):
+def vgg_large_decoder(z, args, reuse=False):
     """Decoder for VGG-11 architecture based encoder. Reconstructs next frame using given
     latent space representation
 

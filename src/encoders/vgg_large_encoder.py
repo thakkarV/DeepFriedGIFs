@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def vanilla_encoder(x, args, reuse=False):
+def vgg_large_encoder(x, args, reuse=False):
     """VGG-11 architecture based CNN that encodes input image to latent space representation
     See ConvNet Configuration A in Table 1 of paper at https://arxiv.org/pdf/1409.1556.pdf
     
