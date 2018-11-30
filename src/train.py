@@ -147,13 +147,13 @@ def train(args):
 #                    for i, grad in enumerate(gradients):
 #                        print('gradient number {:2d}: max val = {:5.5f}, {:5.5f}. min val = {:5.5f}, {:5.5f}. isnan = {}'.format(i, grad[0].max(), grad[1].max(), grad[0].min(), grad[1].min(), np.isnan(grad).any()))
 
-                    # update summaries
-                    summary_writer.add_summary(
-                        summary, global_step=(epoch+1)*itr)
-
                     itr += 1
                     if itr % args.log_interval == 0:
                         print("Epoch {} Itr {} loss = {}".format(epoch, itr, loss))
+                 
+                        # update summaries
+                        summary_writer.add_summary(
+                            summary, global_step=(epoch+1)*itr)
 
                 print("Done epoch {}".format(epoch))
                 saver.save(
