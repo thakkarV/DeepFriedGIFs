@@ -77,9 +77,10 @@ def train(args):
 
         # summaries
         with tf.name_scope("summary"):
-            tf.summary.scalar("loss", loss_op)
-            tf.summary.tensor_summary("latent_rep", Z)
-            tf.summary.image("reconstructed", T_hat)
+            tf.summary.scalar("sumary_loss", loss_op)
+            tf.summary.tensor_summary("sumary_Z", Z)
+            tf.summary.image("sumary_target", T)
+            tf.summary.image("sumary_recon", T_hat)
             summary_op = tf.summary.merge_all()
 
         with tf.name_scope("init"):
@@ -147,7 +148,8 @@ def train(args):
 #                        print('gradient number {:2d}: max val = {:5.5f}, {:5.5f}. min val = {:5.5f}, {:5.5f}. isnan = {}'.format(i, grad[0].max(), grad[1].max(), grad[0].min(), grad[1].min(), np.isnan(grad).any()))
 
                     # update summaries
-                    summary_writer.add_summary(summary)
+                    summary_writer.add_summary(
+                        summary, global_step=(epoch+1)*itr)
 
                     itr += 1
                     if itr % args.log_interval == 0:
