@@ -1,6 +1,7 @@
 # ignore dataset
 data/
 .vscode/
+src/start_train_job.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

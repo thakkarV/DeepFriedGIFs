@@ -7,16 +7,17 @@ def reconstruction_loss(recon, target, metric=None):
 
     # average divergence between images
     if metric is None:
-        losses = tf.div(
+        loss = tf.div(
             tf.reduce_mean(
                 tf.square(
                     tf.subtract(recon, target)
-                )),
+                )
+            ),
             2,
             name="pixelwise-mse"
         )
-        tf.add_to_collection('losses', losses)
-        return tf.add_n(tf.get_collection('losses'), name='total_loss')
+        tf.assert_scalar(loss)
+        return loss
     elif metric == "Euclidean":
         # TODO: make sure this is correct
         return tf.sqrt(tf.reduce_sum(tf.square(target - recon)))

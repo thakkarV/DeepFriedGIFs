@@ -5,7 +5,7 @@ import pdb
 
 
 # TODO: in what order should it be upscaled? (upscale -> conv OR conv -> upscale)
-def vanilla_decoder(z, args, reuse=False):
+def vgg_small_decoder(z, args, reuse=False):
     """Decoder for VGG-11 architecture based encoder. Reconstructs next frame using given
     latent space representation
 
@@ -24,15 +24,15 @@ def vanilla_decoder(z, args, reuse=False):
         # z -> 1000 fc -> 4096 fc -> 4096 fc -> flattened -> reshape as 2d to match last conv layer output of vgg11
         with tf.variable_scope('fc_layers'):
             fc1 = tf.layers.dense(inputs=z, units=1000, activation=tf.nn.relu)
-            fc2 = tf.layers.dense(inputs=fc1, units=4096, activation=tf.nn.relu)
-            fc3 = tf.layers.dense(inputs=fc2, units=4096, activation=tf.nn.relu)
-            num_flattened_units = args.batch_size * floor(args.crop_height/32) * floor(args.crop_width/32) * 512
-            flattened = tf.layers.dense(inputs=fc3, units=num_flattened_units)
+            #fc2 = tf.layers.dense(inputs=fc1, units=4096, activation=tf.nn.relu)
+            #fc3 = tf.layers.dense(inputs=fc2, units=4096, activation=tf.nn.relu)
+            num_flattened_units = args.batch_size * floor(args.crop_height/32) * floor(args.crop_width/32) * 128
+            flattened = tf.layers.dense(inputs=fc1, units=num_flattened_units)
             flattened_to_2d = tf.reshape(tensor=flattened,
                                         shape=(args.batch_size, 
                                                 floor(args.crop_height/32), # 5 maxpool layers = 32x reduction
                                                 floor(args.crop_width/32),  # 5 maxpool layers = 32x reduction
-                                                512))                       # 512 filters in last layer
+                                                128))                       # 64 filters in last layer
         with tf.variable_scope('deconv_layers_1'):
             # if maxpool was applied on even number shaped input, then output_shape=2xinput_shape (same padding)
             # NOTE: same padding out = in * stride
@@ -45,7 +45,7 @@ def vanilla_decoder(z, args, reuse=False):
 
             # 2x upscale from fc output to shape of second last conv layer output in vgg11
             upscale_deconv1 = tf.layers.conv2d_transpose(inputs=flattened_to_2d, 
-                                                    filters=512,
+                                                    filters=128,
                                                     kernel_size=3, 
                                                     strides=2,
                                                     padding=padding,
@@ -53,7 +53,7 @@ def vanilla_decoder(z, args, reuse=False):
                                                     activation=tf.nn.relu)
             # no upscale transpose conv
             deconv1 = tf.layers.conv2d_transpose(inputs=upscale_deconv1, 
-                                                    filters=512,
+                                                    filters=128,
                                                     kernel_size=3, 
                                                     strides=1,
                                                     padding='same',
@@ -69,18 +69,18 @@ def vanilla_decoder(z, args, reuse=False):
 
             # 2x upscale from shape of second last conv layer output to shape of third last conv 
             # layer output in vgg11
-            upscale_deconv2 = tf.layers.conv2d_transpose(inputs=deconv1, 
-                                                    filters=512,
+            # upscale_deconv2 = tf.layers.conv2d_transpose(inputs=deconv1, 
+            #                                         filters=64,
+            #                                         kernel_size=3, 
+            #                                         strides=2,
+            #                                         padding=padding,
+            #                                         use_bias=True,
+            #                                         activation=tf.nn.relu)
+            # no upscale transpose conv
+            deconv2 = tf.layers.conv2d_transpose(inputs=deconv1, 
+                                                    filters=128,
                                                     kernel_size=3, 
                                                     strides=2,
-                                                    padding=padding,
-                                                    use_bias=True,
-                                                    activation=tf.nn.relu)
-            # no upscale transpose conv
-            deconv2 = tf.layers.conv2d_transpose(inputs=upscale_deconv2, 
-                                                    filters=512,
-                                                    kernel_size=3, 
-                                                    strides=1,
                                                     padding='same',
                                                     use_bias=True,
                                                     activation=tf.nn.relu)
@@ -94,18 +94,18 @@ def vanilla_decoder(z, args, reuse=False):
 
             # 2x upscale from shape of third last conv layer output to shape of fourth last conv 
             # layer output in vgg11
-            upscale_deconv3 = tf.layers.conv2d_transpose(inputs=deconv2, 
-                                                    filters=256,
+            # upscale_deconv3 = tf.layers.conv2d_transpose(inputs=deconv2, 
+            #                                         filters=32,
+            #                                         kernel_size=3, 
+            #                                         strides=2,
+            #                                         padding=padding,
+            #                                         use_bias=True,
+            #                                         activation=tf.nn.relu)
+            # no upscale transpose conv
+            deconv3 = tf.layers.conv2d_transpose(inputs=deconv2, 
+                                                    filters=64,
                                                     kernel_size=3, 
                                                     strides=2,
-                                                    padding=padding,
-                                                    use_bias=True,
-                                                    activation=tf.nn.relu)
-            # no upscale transpose conv
-            deconv3 = tf.layers.conv2d_transpose(inputs=upscale_deconv3, 
-                                                    filters=256,
-                                                    kernel_size=3, 
-                                                    strides=1,
                                                     padding='same',
                                                     use_bias=True,
                                                     activation=tf.nn.relu)
@@ -118,9 +118,9 @@ def vanilla_decoder(z, args, reuse=False):
                 padding = 'valid'
 
             # 2x upscale from shape of fourth last conv layer output to shape of fifth last conv 
-            # layer output in vgg11
+            # layer output in vgg
             upscale_deconv4 = tf.layers.conv2d_transpose(inputs=deconv3, 
-                                                    filters=128,
+                                                    filters=32,
                                                     kernel_size=3, 
                                                     strides=2,
                                                     padding=padding,
@@ -137,7 +137,7 @@ def vanilla_decoder(z, args, reuse=False):
             # 2x upscale from shape of fifth last conv layer output to shape of first conv 
             # layer output in vgg11
             upscale_deconv5 = tf.layers.conv2d_transpose(inputs=upscale_deconv4, 
-                                                    filters=64,
+                                                    filters=16,
                                                     kernel_size=3, 
                                                     strides=2,
                                                     padding=padding,
