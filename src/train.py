@@ -118,6 +118,7 @@ def train(args):
 
         # Main training loop
         try:
+            summary_global_step = 0
             while epoch < args.n_epoch:
                 itr = 0
                 for input_frames, target_frames, palettes in \
@@ -157,9 +158,10 @@ def train(args):
                     if itr % args.log_interval == 0:
                         print("Epoch {} Itr {} loss = {}".format(epoch, itr, loss))
 
-                        # update summaries
+                        # update summaries. update global step
                         summary_writer.add_summary(
-                            summary, global_step=(epoch+1)*itr)
+                            summary, global_step=summary_global_step)
+                        summary_global_step += 1
 
                 print("Done epoch {}".format(epoch))
                 saver.save(
