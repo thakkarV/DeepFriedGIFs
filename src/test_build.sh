@@ -11,16 +11,18 @@
 module load python/3.6.2
 module load tensorflow/r1.10
 
-python train.py \
--e vgg_small_encoder \
--d vgg_small_decoder \
+python ./../../../src/train.py \
+-e vgg_large_encoder \
+-d vgg_large_decoder \
+-lr 0.0005 \
 -w 1 \
 -o 0 \
 -cp CC \
 -ch 64 \
 -cw 64 \
--m ../runs_11_30_v7/tests/vanilla/ \
---data ../data/train \
+-it normalize \
+-m ./ \
+--data ./../../../data/val \
 --n-epoch 10 \
 --log-interval 10
 
