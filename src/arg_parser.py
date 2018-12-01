@@ -50,6 +50,20 @@ def parse_train_args():
         help = "Dimensions of latent space representative vector"
     )
 
+    parser.add_argument(
+        "-it", "--input-transform",
+        type = str,
+        required = False,
+        help = "Transform to apply to the data before input to encoder."
+    )
+
+    parser.add_argument(
+        "-ot", "--output-transform",
+        type = str,
+        required = False,
+        help = "Transform to apply to the data after output from decoder."
+    )
+
     return parser.parse_args()
 
 
@@ -63,6 +77,13 @@ def parse_compress_args():
         help = "Name of the encoder model to be used"
     )
 
+    parser.add_argument(
+        "-it", "--input-transform",
+        type = str,
+        required = False,
+        help = "Transform to apply to the data before input to encoder."
+    )
+
     return parser.parse_args()
 
 
@@ -74,6 +95,13 @@ def parse_decompress_args():
         type = str,
         required = True,
         help = "Name of the decoder model to be used."
+    )
+
+    parser.add_argument(
+        "-ot", "--output-transform",
+        type = str,
+        required = False,
+        help = "Transform to apply to the data after output from decoder."
     )
 
     return parser.parse_args()

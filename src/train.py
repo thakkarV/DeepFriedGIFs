@@ -4,6 +4,7 @@ import tensorflow as tf
 
 import encoders
 import decoders
+import transforms
 from arg_parser import parse_train_args
 from dataset_util import Dataset
 from loss import reconstruction_loss
@@ -16,6 +17,10 @@ def train(args):
     # fail early if the encoder and decoder are not found
     encoder = getattr(encoders, args.encoder)
     decoder = getattr(decoders, args.decoder)
+    input_transform = None
+    if args.input_transform is not None:
+        input_transform = getattr(transforms, args.input_transform)
+
     dataset = Dataset(
         args.data,
         args.batch_size,
@@ -23,7 +28,8 @@ def train(args):
         args.target_offset,
         args.crop_pos,
         args.crop_height,
-        args.crop_width
+        args.crop_width,
+        input_transform
     )
 
     if not os.path.exists(args.save_path):
@@ -150,7 +156,7 @@ def train(args):
                     itr += 1
                     if itr % args.log_interval == 0:
                         print("Epoch {} Itr {} loss = {}".format(epoch, itr, loss))
-                 
+
                         # update summaries
                         summary_writer.add_summary(
                             summary, global_step=(epoch+1)*itr)
