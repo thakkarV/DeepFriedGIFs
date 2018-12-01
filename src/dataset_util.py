@@ -27,7 +27,8 @@ class Dataset(object):
             target_offset,
             crop_pos=None,
             crop_height=None,
-            crop_width=None):
+            crop_width=None,
+            transform=None):
         """Prameterizes the dataset based on the training requirements based on
         compression window and cropping settings andvalidates input parameters.
 
@@ -41,6 +42,8 @@ class Dataset(object):
             crop_pos {str} -- area to keep within the GIF (default: {None})
             crop_height {int} -- cropped height in pixels (default: {None})
             crop_width  {int} -- cropped width in pixels  (default: {None})
+            transform {functor} -- applies a transform to data before yielding
+                (default: {None})
 
         Raises:
             Exception -- in case any input parameters are not valid.
@@ -93,6 +96,10 @@ class Dataset(object):
             raise Exception(
                 "Batch sizes larger than 1 not supported for uncropped frames")
 
+        if transform is not None and not callable(transform):
+            raise Exception("Input transform is not callable.")
+        self.transform = transform
+
     def generate_training_batch(self):
         """Generator for the dataset during trianing. Each call retruns
         batch_size number of slices from the GIF dataset.
@@ -133,6 +140,9 @@ class Dataset(object):
             next_batch_is_available = self.update_curator_state(
                 curator_state, frame_dict, palette_dict)
 
+            if self.transform is not None:
+                frame_batch  = self.transform(frame_batch)
+                target_batch = self.transform(target_batch)
             yield frame_batch, target_batch, palette_batch
 
 
@@ -445,7 +455,9 @@ if __name__ == "__main__":
         print(np.shape(batch[0]))
         print(np.shape(batch[1]))
         print(np.shape(batch[2]))
-        if i > 512: break
+        if i > 512:
+            pdb.set_trace()
+            break
 
     # test non FCN case -- cropping
     dataset = Dataset(
