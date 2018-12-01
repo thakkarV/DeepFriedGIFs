@@ -1,5 +1,6 @@
 #!/bin/bash -l
 
+#$ -P dl-course
 #$ -m beas
 #$ -pe omp 4
 #$ -l mem_total=64G
@@ -11,14 +12,14 @@ module load python/3.6.2
 module load tensorflow/r1.10
 
 python train.py \
--e vanilla_encoder \
--d vanilla_decoder \
+-e vgg_small_encoder \
+-d vgg_small_decoder \
 -w 1 \
 -o 0 \
 -cp CC \
 -ch 64 \
 -cw 64 \
--m ../runs/tests/vanilla/ \
+-m ../runs_11_30_v7/tests/vanilla/ \
 --data ../data/train \
 --n-epoch 10 \
 --log-interval 10
