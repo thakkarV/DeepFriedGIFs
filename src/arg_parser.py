@@ -27,6 +27,22 @@ def parse_train_args():
     )
 
     parser.add_argument(
+        "-l1", "--l1-reg-strength",
+        type = float,
+        default = None,
+        required = False,
+        help = "L1 regularization strength. Use 'None' to disable."
+    )
+
+    parser.add_argument(
+        "-l2", "--l2-reg-strength",
+        type = float,
+        default = None,
+        required = False,
+        help = "L2 regularization strength. Use 'None' to disable."
+    )
+
+    parser.add_argument(
         "-lr", "--learning-rate",
         type = float,
         default = 0.001,
