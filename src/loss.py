@@ -6,7 +6,7 @@ def reconstruction_loss(
     target,
     metric=None,
     l1_reg_strength=None,
-    l2_reg_strength=None):
+    l2_reg_strength=None, log_sigma=None, mu=None):
     '''Retruns the loss calculation operation for the reconstruction
     loss as measured by the input metric which defaults
     to squared euclidean by default.'''
@@ -29,6 +29,10 @@ def reconstruction_loss(
         loss = tf.reduce_mean(target - recon)
     elif metric == "Absolute":
         loss = tf.reduce_sum(target - recon)
+    elif metric == "VAE_loss":
+        recon = tf.reduce_sum(tf.losses.sigmoid_cross_entropy(recon, target), axis=1)
+        kl = tf.reduce_sum(tf.exp(log_sigma) + tf.square(mu) - 1 - log_sigma, axis=1)
+        loss = recon + 0.5*kl
     else:
         raise NotImplementedError(
             "Metric type {} is invalid for reconstruction loss".format(metric)
