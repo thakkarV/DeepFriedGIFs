@@ -11,6 +11,9 @@ from loss import reconstruction_loss
 
 import pdb
 
+def z_sample(mu_z, log_sigma):
+    sampled = tf.random_normal(shape=tf.shape(mu_z))
+    return mu_z + sampled*tf.exp(log_sigma/2)
 
 def train(args):
     # AttributeErrors not handled
@@ -36,7 +39,7 @@ def train(args):
         os.makedirs(args.save_path)
 
     # graph definition
-    with tf.Graph().as_default() as g:
+    with tf.Graph().as_default() as g_encoder:
         # placeholders
         # target frame, number of channels is always one for GIF
         T = tf.placeholder(tf.float32, shape=(
@@ -79,7 +82,8 @@ def train(args):
             raise NotImplementedError
 
         # feed into networks, with their own unique name_scopes
-        Z = encoder(X, args)
+        mu, sigma = encoder(X, args)
+        Z = z_sample(mu, sigma)
         T_hat = decoder(Z, args)
 
         # calculate loss
@@ -113,7 +117,7 @@ def train(args):
         # init graph variables
         sess.run(init_op)
 
-        # attempt to resume previous trianing
+        # attempt to resume previous training
         epoch = 0
         ckpt = tf.train.get_checkpoint_state(args.save_path)
         if ckpt and ckpt.model_checkpoint_path:
