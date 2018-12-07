@@ -65,6 +65,17 @@ def train(args):
                 )
         else:
             # FCN case
+            if args.window_size > 1:
+                X = tf.placeholder(
+                    tf.float32,
+                    shape=(1, args.window_size, None, None, 1)
+                )
+            else:
+                X = tf.placeholder(
+                    tf.float32,
+                    shape=(1, None, None, 1)
+                )
+            # TODO: remove this once FCN networks have been added
             raise NotImplementedError
 
         # feed into networks, with their own unique name_scopes
