@@ -39,7 +39,7 @@ def train(args):
         os.makedirs(args.save_path)
 
     # graph definition
-    with tf.Graph().as_default() as g_encoder:
+    with tf.Graph().as_default() as g:
         # placeholders
         # target frame, number of channels is always one for GIF
         T = tf.placeholder(tf.float32, shape=(
@@ -82,8 +82,12 @@ def train(args):
             raise NotImplementedError
 
         # feed into networks, with their own unique name_scopes
-        mu, sigma = encoder(X, args)
-        Z = z_sample(mu, sigma)
+        if args.encoder == "vae_encoder":
+            mu, sigma = encoder(X, args)
+            Z = z_sample(mu, sigma)
+        else:
+            Z = encoder(X, args)
+        
         T_hat = decoder(Z, args)
 
         # calculate loss
