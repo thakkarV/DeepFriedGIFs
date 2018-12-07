@@ -87,7 +87,7 @@ def train(args):
             Z = z_sample(mu, sigma)
         else:
             Z = encoder(X, args)
-        
+
         T_hat = decoder(Z, args)
 
         # calculate loss
@@ -103,7 +103,6 @@ def train(args):
         # summaries
         with tf.name_scope("summary"):
             tf.summary.scalar("sumary_loss", loss_op)
-            tf.summary.tensor_summary("sumary_Z", Z)
             tf.summary.image("sumary_target", T)
             tf.summary.image("sumary_recon", T_hat)
             summary_op = tf.summary.merge_all()
