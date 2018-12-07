@@ -124,18 +124,6 @@ def train(args):
                 for input_frames, target_frames, palettes in \
                     dataset.generate_training_batch():
 
-#                    # pinpoint where the nans in encoder network
-#                    for var in g.get_collection(name=tf.GraphKeys.GLOBAL_VARIABLES, scope='encoder'):
-#                        if tf.is_nan(var).eval().any():
-#                            print('{} has nan values'.format(var.name))
-#                            pdb.set_trace()
-
-#                    # pinpoint where the nans in decoder network
-#                    for var in g.get_collection(name=tf.GraphKeys.GLOBAL_VARIABLES, scope='decoder'):
-#                        if tf.is_nan(var).eval().any():
-#                            print('{} has nan values'.format(var.name))
-#                            pdb.set_trace()
-
                     loss, _, summary = sess.run(
                         [loss_op, train_op, summary_op],
                         feed_dict={
@@ -143,16 +131,6 @@ def train(args):
                             T: target_frames
                         }
                     )
-
-#                    # check if the encoding or the reconstructed image has nans
-#                    if np.isnan(enc).any():
-#                        print('encoding has nan value(s)')
-#                    if np.isnan(dec).any():
-#                        print('decoded frame has nan value(s)')
-
-#                    # check if any of the gradients are nans
-#                    for i, grad in enumerate(gradients):
-#                        print('gradient number {:2d}: max val = {:5.5f}, {:5.5f}. min val = {:5.5f}, {:5.5f}. isnan = {}'.format(i, grad[0].max(), grad[1].max(), grad[0].min(), grad[1].min(), np.isnan(grad).any()))
 
                     itr += 1
                     if itr % args.log_interval == 0:
