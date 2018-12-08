@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import tensorflow as tf
 
 import encoders
@@ -9,11 +8,11 @@ from arg_parser import parse_train_args
 from dataset_util import Dataset
 from loss import reconstruction_loss
 
-import pdb
 
 def z_sample(mu_z, log_sigma):
     sampled = tf.random_normal(shape=tf.shape(mu_z))
     return mu_z + sampled*tf.exp(log_sigma/2)
+
 
 def train(args):
     # AttributeErrors not handled
@@ -105,7 +104,8 @@ def train(args):
 
         # optimizer
         with tf.name_scope("optim"):
-            optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
+            optimizer = tf.train.AdamOptimizer(
+                learning_rate=args.learning_rate)
             # grads = optimizer.compute_gradients(loss_op)
             train_op = optimizer.minimize(loss_op)
 
@@ -120,7 +120,8 @@ def train(args):
             init_op = tf.global_variables_initializer()
 
     # graph execution
-    print('starting training with learning rate = {}'.format(args.learning_rate))
+    print('starting training with learning rate = {}'
+        .format(args.learning_rate))
     with tf.Session(graph=g) as sess:
         summary_writer = tf.summary.FileWriter(
             os.path.join(args.save_path, "log"), sess.graph)
@@ -149,7 +150,7 @@ def train(args):
             while epoch < args.n_epoch:
                 itr = 0
                 for input_frames, target_frames, palettes in \
-                    dataset.generate_training_batch():
+                        dataset.generate_training_batch():
 
                     loss, _, summary = sess.run(
                         [loss_op, train_op, summary_op],
@@ -161,7 +162,8 @@ def train(args):
 
                     itr += 1
                     if itr % args.log_interval == 0:
-                        print("Epoch {} Itr {} loss = {}".format(epoch, itr, loss))
+                        print("Epoch {} Itr {} loss = {}"
+                            .format(epoch, itr, loss))
 
                         # update summaries. update global step
                         summary_writer.add_summary(
@@ -171,8 +173,8 @@ def train(args):
                 print("Done epoch {}".format(epoch))
                 saver.save(
                     sess,
-                    os.path.join(args.save_path, "model.ckpt"),jrk
-                    global_step = epoch
+                    os.path.join(args.save_path, "model.ckpt"),
+                    global_step=epoch
                 )
                 epoch += 1
 
@@ -181,7 +183,7 @@ def train(args):
             saver.save(
                 sess,
                 os.path.join(args.save_path, "model.ckpt"),
-                global_step = epoch
+                global_step=epoch
             )
 
 
