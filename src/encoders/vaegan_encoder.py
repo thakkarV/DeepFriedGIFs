@@ -21,12 +21,16 @@ def vaegan_encoder(x, args, reuse=False):
     Returns:
         z -- args.z_dim x 1 shaped latent space representation of input frame
     """
-    # when compressing multiple frames, we need conv3d and
+    # when compressing multiple frames, we need conv3d
+    # we must NOT downsample along the frames axis (depth), just height and width
     # when compressing a single frame, we need conv2d
+    # we downsample along height and width. there is no depth axis
     if args.window_size != 1:
         conv = tf.layers.conv3d
+        downsampling_stride = (1, 2, 2)
     else:
         conv = tf.layers.conv2d
+        downsampling_stride = (2, 2)
 
     with tf.variable_scope("encoder", reuse=reuse):
         # 5x5 64 downsampling conv, batch norm, relu
@@ -34,7 +38,7 @@ def vaegan_encoder(x, args, reuse=False):
             inputs=x,
             filters=64,
             kernel_size=5,
-            strides=(1, 2, 2),
+            strides=downsampling_stride,
             padding='same',
             activation=None,
             use_bias=True)
@@ -46,7 +50,7 @@ def vaegan_encoder(x, args, reuse=False):
             inputs=relu1,
             filters=128,
             kernel_size=5,
-            strides=(1, 2, 2),
+            strides=downsampling_stride,
             padding='same',
             activation=None,
             use_bias=True)
@@ -58,7 +62,7 @@ def vaegan_encoder(x, args, reuse=False):
             inputs=relu2,
             filters=256,
             kernel_size=5,
-            strides=(1, 2, 2),
+            strides=downsampling_stride,
             padding='same',
             activation=None,
             use_bias=True)
