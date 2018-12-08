@@ -33,6 +33,10 @@ def reconstruction_loss(
         recon = tf.reduce_sum(tf.losses.sigmoid_cross_entropy(recon, target), axis=1)
         kl = tf.reduce_sum(tf.exp(log_sigma) + tf.square(mu) - 1 - log_sigma, axis=1)
         loss = recon + 0.5*kl
+    elif metric == "SSIM":
+        # SSIM loss as defined in:
+        # https://research.nvidia.com/sites/default/files/pubs/2017-03_Loss-Functions-for/NN_ImgProc.pdf
+        loss = 1 - tf.reduce_mean(tf.image.ssim(target, recon, max_val=255))
     else:
         raise NotImplementedError(
             "Metric type {} is invalid for reconstruction loss".format(metric)
@@ -41,9 +45,9 @@ def reconstruction_loss(
     if l1_reg_strength is not None:
         loss += float(l1_reg_strength) * tf.add_n([tf.norm(var, ord = 1) for \
                 var in tf.trainable_variables() if 'bias' not in var.name])
-    
+
     if l2_reg_strength is not None:
         loss += float(l2_reg_strength) * tf.add_n([tf.norm(var, ord = 2) for \
                 var in tf.trainable_variables() if 'bias' not in var.name])
-    
+
     return loss
