@@ -5,8 +5,10 @@ def reconstruction_loss(
     recon,
     target,
     metric=None,
+    mu=None,
+    log_sigma=None,
     l1_reg_strength=None,
-    l2_reg_strength=None, log_sigma=None, mu=None):
+    l2_reg_strength=None):
     '''Retruns the loss calculation operation for the reconstruction
     loss as measured by the input metric which defaults
     to squared euclidean by default.'''
@@ -30,8 +32,14 @@ def reconstruction_loss(
     elif metric == "Absolute":
         loss = tf.reduce_sum(target - recon)
     elif metric == "VAE_loss":
-        recon = tf.reduce_sum(tf.losses.sigmoid_cross_entropy(recon, target), axis=1)
-        kl = tf.reduce_sum(tf.exp(log_sigma) + tf.square(mu) - 1 - log_sigma, axis=1)
+        recon = tf.reduce_sum(
+            tf.losses.sigmoid_cross_entropy(recon, target),
+            axis=1
+        )
+        kl = tf.reduce_sum(
+            tf.exp(log_sigma) + tf.square(mu) - 1 - log_sigma,
+            axis=1
+        )
         loss = recon + 0.5*kl
     elif metric == "SSIM":
         # SSIM loss as defined in:
@@ -43,11 +51,11 @@ def reconstruction_loss(
         )
 
     if l1_reg_strength is not None:
-        loss += float(l1_reg_strength) * tf.add_n([tf.norm(var, ord = 1) for \
-                var in tf.trainable_variables() if 'bias' not in var.name])
+        loss += float(l1_reg_strength) * tf.add_n([tf.norm(var, ord=1) for
+            var in tf.trainable_variables() if 'bias' not in var.name])
 
     if l2_reg_strength is not None:
-        loss += float(l2_reg_strength) * tf.add_n([tf.norm(var, ord = 2) for \
-                var in tf.trainable_variables() if 'bias' not in var.name])
+        loss += float(l2_reg_strength) * tf.add_n([tf.norm(var, ord=2) for
+            var in tf.trainable_variables() if 'bias' not in var.name])
 
     return loss
