@@ -59,14 +59,6 @@ def parse_train_args():
     )
 
     parser.add_argument(
-        "-zd", "--z-dim",
-        type = int,
-        default = 100,
-        required = False,
-        help = "Dimensions of latent space representative vector"
-    )
-
-    parser.add_argument(
         "-it", "--input-transform",
         type = str,
         required = False,
@@ -200,6 +192,14 @@ def add_common_args(parser):
         required = False,
         help = "Path to output directory and logs. \
             Defaults to <model-save-dir>/out."
+    )
+
+    parser.add_argument(
+        "-zd", "--z-dim",
+        type = int,
+        default = 512,
+        required = False,
+        help = "Dimensions of latent space representative vector."
     )
 
     return parser
