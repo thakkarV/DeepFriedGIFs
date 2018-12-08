@@ -1,7 +1,4 @@
 import tensorflow as tf
-def z_sample(mu_z, log_sigma):
-    sampled = tf.random_normal(shape=tf.shape(mu_z))
-    return mu_z + sampled*tf.exp(log_sigma/2)
 
 def vae_encoder(x, args, reuse=False):
     """Encoder architecture as prescribed in VAE tutorial 
@@ -24,4 +21,4 @@ def vae_encoder(x, args, reuse=False):
         fc1 = tf.layers.dense(inputs=x, units=2048, activation="relu", use_bias=True)
         mu_z = tf.layers.dense(inputs=fc1, units=args.z_dim, activation="linear" )
         log_sigma = tf.layers.dense(inputs=fc1, units=args.z_dim, activation="linear" )
-    return z_sample(mu_z, log_sigma)
+    return mu_z, log_sigma

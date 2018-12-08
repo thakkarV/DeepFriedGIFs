@@ -19,7 +19,6 @@ def vae_decoder(z, args, reuse=False):
     """
 
     fc1 = tf.layers.dense(inputs=z, units=2048, activation="relu")
-    flattened = tf.layers.dense(inputs=fc1, units=args.crop_width*args.crop_height, activation="sigmoid")
-    recon_frame = tf.reshape(flattened,[args.crop_wigth, args.crop_height, 1])
+    recon_frame = tf.layers.dense(inputs=fc1, units=args.crop_width*args.crop_height, activation="sigmoid")
 
-    return recon_frame
+    return tf.transpose(recon_frame)
