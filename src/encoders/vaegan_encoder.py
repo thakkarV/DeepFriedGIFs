@@ -68,7 +68,7 @@ def vaegan_encoder(x, args, reuse=False):
         relu3_flattened = tf.layers.flatten(relu3)
         fc1 = tf.layers.dense(
             inputs=relu3_flattened,
-            units=args.dim_z,
+            units=args.z_dim,
             activation=None,
             use_bias=True
         )
