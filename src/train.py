@@ -92,7 +92,11 @@ def train(args):
 
         # calculate loss
         with tf.name_scope("loss"):
-            loss_op = reconstruction_loss(T_hat, T, args.loss)
+            if args.loss == "VAE_loss":
+                loss_op = reconstruction_loss(T_hat, T, args.loss, mu, sigma)
+            else:
+                loss_op = reconstruction_loss(T_hat, T, args.loss)
+
 
         # optimizer
         with tf.name_scope("optim"):
