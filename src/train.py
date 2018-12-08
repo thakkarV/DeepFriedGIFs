@@ -86,17 +86,22 @@ def train(args):
             mu, sigma = encoder(X, args)
             Z = z_sample(mu, sigma)
         else:
+            mu, sigma = None, None
             Z = encoder(X, args)
 
         T_hat = decoder(Z, args)
 
         # calculate loss
         with tf.name_scope("loss"):
-            if args.loss == "VAE_loss":
-                loss_op = reconstruction_loss(T_hat, T, args.loss, mu, sigma)
-            else:
-                loss_op = reconstruction_loss(T_hat, T, args.loss)
-
+            mu = mu if mu is not None else None
+            sigma = sigma if sigma is not None else None
+            loss_op = reconstruction_loss(
+                T_hat, T,
+                args.loss,
+                mu, sigma,
+                args.l1_reg_strength,
+                args.l2_reg_strength
+            )
 
         # optimizer
         with tf.name_scope("optim"):
@@ -166,7 +171,7 @@ def train(args):
                 print("Done epoch {}".format(epoch))
                 saver.save(
                     sess,
-                    os.path.join(args.save_path, "model.ckpt"),
+                    os.path.join(args.save_path, "model.ckpt"),jrk
                     global_step = epoch
                 )
                 epoch += 1
