@@ -107,6 +107,8 @@ def compress(args):
         out_path,
         args.window_size,
         args.target_offset,
+        args.crop_height,
+        args.crop_width,
         palette,
         head_frames,
         compressed_frames,
