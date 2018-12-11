@@ -34,7 +34,10 @@ class SerDes(object):
         """
         if not osp.exists(path):
             print("ERROR: Invalid path {}".format(path))
-        return pickle.load(open(path, 'rb'))
+        print(path)
+        with open(path, 'rb') as f:
+            dfg_obj = pickle.load(f)
+        return dfg_obj
 
     @staticmethod
     def write_compressed_gif(

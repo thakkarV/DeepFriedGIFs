@@ -47,7 +47,7 @@ def decompress(args):
     dfg_obj = SerDes.read_compressed_gif(args.data)
 
     # validate file contents
-    assert len(dfg_obj) == 7
+    assert len(dfg_obj) == 9
     header = dfg_obj[0]
     if header != SerDes.DFG_HEADER:
         print("ERROR: Loaded file at path is not a valid DFG file.")
@@ -82,22 +82,29 @@ def decompress(args):
     decompressed_frames[:-num_tail_frames, :, :] = tail_frames
 
     # start inference to decompress frames
+    decomp_frames_raw = np.empty(
+        shape=(num_comp_frames, crop_height, crop_width),
+        dtype=np.float32
+    )
     with tf.Session(graph=model.graph) as sess:
         saver = tf.train.Saver()
         saver.restore(sess, args.save_path)
 
         # run all frames in a batch
-        decomp_frames_raw = sess.run(
-            model.decompression_op,
-            feed_dict={model.Z_in: compressed_frames}
-        )
+        for i in range(num_comp_frames):
+            decomp_frames_raw[i] = sess.run(
+                model.decompression_op,
+                feed_dict={model.Z_in: np.expand_dims(
+                    compressed_frames[num_head_frames + i], axis=0)
+                }
+            )[:, :, 0]
 
     # denormalize if specified
     decomp_frames = None
     if output_transform is None:
         decomp_frames = decomp_frames_raw.astype(np.int8)
     else:
-        decomp_frames = (output_transform(decomp_frames)).astype(np.int8)
+        decomp_frames = (output_transform(decomp_frames_raw)).astype(np.int8)
     assert len(decomp_frames) == num_comp_frames
 
     # write into frames array
