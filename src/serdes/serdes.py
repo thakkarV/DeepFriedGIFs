@@ -69,15 +69,15 @@ class SerDes(object):
 
         # construct DFG object
         dfg_obj = 9 * [None]
-        dfg_obj[DFG_HEADER_IDX] = DFG_HEADER
-        dfg_obj[DFG_WINDOW_IDX] = window_size
-        dfg_obj[DFG_OFFSET_IDX] = window_offset
-        dfg_obj[DFG_CROPHI_IDX] = crop_height
-        dfg_obj[DFG_CROPWI_IDX] = crop_width
-        dfg_obj[DFG_COLMAP_IDX] = colour_map
-        dfg_obj[DFG_HEADFR_IDX] = head_frames
-        dfg_obj[DFG_COMPFR_IDX] = compressed_frames
-        dfg_obj[DFG_TAILFR_IDX] = tail_frames
+        dfg_obj[SerDes.DFG_HEADER_IDX] = SerDes.DFG_HEADER
+        dfg_obj[SerDes.DFG_WINDOW_IDX] = window_size
+        dfg_obj[SerDes.DFG_OFFSET_IDX] = window_offset
+        dfg_obj[SerDes.DFG_CROPHI_IDX] = crop_height
+        dfg_obj[SerDes.DFG_CROPWI_IDX] = crop_width
+        dfg_obj[SerDes.DFG_COLMAP_IDX] = colour_map
+        dfg_obj[SerDes.DFG_HEADFR_IDX] = head_frames
+        dfg_obj[SerDes.DFG_COMPFR_IDX] = compressed_frames
+        dfg_obj[SerDes.DFG_TAILFR_IDX] = tail_frames
 
         # write to disk
         with open(path, 'wb') as f:
