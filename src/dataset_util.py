@@ -1,9 +1,8 @@
 from PIL import Image
-from sys import getsizeof
+from PIL.ImagePalette import ImagePalette
 import numpy as np
 import random
 import fnmatch
-import logging
 import os
 import sys
 import pdb
@@ -437,6 +436,38 @@ class Dataset(object):
             frames = np.array(frames, dtype=np.int8)
             palette = np.array(palette, dtype=np.int8)
             return frames, palette
+
+    @staticmethod
+    def write_gif(path, frames, palette):
+        """Writes a GIF file to disk by generating a new PIL GIF
+        from the input frames and color map.
+
+        Arguments:
+            path {str} -- full path to output gif including file_name.gif
+            frames {np.ndarray} -- Frames of the gif in dtype=np.int8
+            palette {np.ndarray} -- Colour palette of the gif in dtype=np.int8
+        """
+        file = open(path, 'wb')
+        # NOTE: mode 'P' means:
+        # "8-bit pixels, mapped to any other mode using a color palette"
+        first_img = Image.fromarray(frames[0], mode='P')
+        other_imgs = []
+
+        # now we have to generate each frame as PIL image first
+        for i in range(1, frames.shape[0]):
+            other_imgs.append(Image.fromarray(frames[i], mode='P'))
+
+        pil_palette = ImagePalette(mode="RGB", palette=palette)
+        first_img.save(
+            file,
+            format="GIF",
+            save_all=True,
+            append_images=other_imgs,
+            palette=pil_palette,
+            loop=0
+        )
+
+        file.close()
 
 
 if __name__ == "__main__":
