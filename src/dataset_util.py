@@ -457,7 +457,9 @@ class Dataset(object):
         for i in range(1, frames.shape[0]):
             other_imgs.append(Image.fromarray(frames[i], mode='P'))
 
-        pil_palette = ImagePalette(mode="RGB", palette=palette)
+        pdb.set_trace()
+        pil_palette = ImagePalette(
+            mode="RGB", palette=bytearray(palette), size=len(palette))
         first_img.save(
             file,
             format="GIF",
