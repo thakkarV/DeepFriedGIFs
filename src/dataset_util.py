@@ -433,7 +433,7 @@ class Dataset(object):
 
         except EOFError:
             gif.close()
-            frames = np.array(frames, dtype=np.int8)
+            frames = np.array(frames, dtype=np.float32)
             palette = np.array(palette, dtype=np.int8)
             return frames, palette
 
@@ -486,10 +486,10 @@ if __name__ == "__main__":
         print(np.shape(batch[1]))
         print(np.shape(batch[2]))
         if i > 512:
-            pdb.set_trace()
             break
 
     # test non FCN case -- cropping
+    from transforms import normalize
     dataset = Dataset(
         "./../data/train/",
         batch_size=64,
@@ -497,9 +497,11 @@ if __name__ == "__main__":
         target_offset=1,
         crop_pos="CC",
         crop_height=64,
-        crop_width=64)
+        crop_width=64,
+        transform=normalize)
     for i, batch in enumerate(dataset.generate_training_batch()):
         print(i)
+        pdb.set_trace()
         print(np.shape(batch[0]))
         print(np.shape(batch[1]))
         print(np.shape(batch[2]))
