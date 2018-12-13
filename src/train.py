@@ -1,26 +1,14 @@
 import os
 import tensorflow as tf
-
-import encoders
-import decoders
-import transforms
 from arg_parser import parse_train_args
 from dataset_util import Dataset
-from loss import reconstruction_loss
-
-import pdb
-
-
-def z_sample(mu_z, log_sigma):
-    sampled = tf.random_normal(shape=tf.shape(mu_z))
-    return mu_z + sampled*tf.exp(log_sigma/2)
+from model import Model
+import transforms
 
 
 def train(args):
-    # AttributeErrors not handled
-    # fail early if the encoder and decoder are not found
-    encoder = getattr(encoders, args.encoder)
-    decoder = getattr(decoders, args.decoder)
+    model = Model(args)
+
     input_transform = None
     if args.input_transform is not None:
         input_transform = getattr(transforms, args.input_transform)
@@ -39,104 +27,16 @@ def train(args):
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
 
-    # graph definition
-    with tf.Graph().as_default() as g:
-        # placeholders
-        # target frame, number of channels is always one for GIF
-        T = tf.placeholder(tf.float32, shape=(
-            args.batch_size,
-            args.crop_height,
-            args.crop_width,
-            1)
-        )
-        # input frame(s), this depends on network parameters
-        if args.crop_pos is not None:
-            # non FCN case
-            if args.window_size > 1:
-                X = tf.placeholder(tf.float32, shape=(
-                    args.batch_size,
-                    args.window_size,
-                    args.crop_height,
-                    args.crop_width,
-                    1)
-                )
-            else:
-                X = tf.placeholder(tf.float32, shape=(
-                    args.batch_size,
-                    args.crop_height,
-                    args.crop_width,
-                    1)
-                )
-        else:
-            # FCN case
-            if args.window_size > 1:
-                X = tf.placeholder(
-                    tf.float32,
-                    shape=(1, args.window_size, None, None, 1)
-                )
-            else:
-                X = tf.placeholder(
-                    tf.float32,
-                    shape=(1, None, None, 1)
-                )
-            # TODO: remove this once FCN networks have been added
-            raise NotImplementedError
-
-        # feed into networks, with their own unique name_scopes
-        if args.encoder == "vae_encoder":
-            mu, sigma = encoder(X, args)
-            Z = z_sample(mu, sigma)
-        else:
-            mu, sigma = None, None
-            Z = encoder(X, args)
-
-        # feed z into this placeholder and then decode from there
-        # this separation has been made so that the train graph can be split
-        # easily into two encoder and decoder parts for inference
-        Z_placeholder = tf.placeholder(tf.float32, shape=(
-                                        args.batch_size,
-                                        args.z_dim))
-        T_hat = decoder(Z_placeholder, args)
-
-        # calculate loss
-        with tf.name_scope("loss"):
-            mu = mu if mu is not None else None
-            sigma = sigma if sigma is not None else None
-            loss_op = reconstruction_loss(
-                T_hat, T,
-                args.loss,
-                mu, sigma,
-                args.l1_reg_strength,
-                args.l2_reg_strength
-            )
-
-        # optimizer
-        with tf.name_scope("optim"):
-            optimizer = tf.train.AdamOptimizer(
-                learning_rate=args.learning_rate)
-            # grads = optimizer.compute_gradients(loss_op)
-            train_op = optimizer.minimize(loss_op)
-
-        # summaries
-        with tf.name_scope("summary"):
-            tf.summary.scalar("sumary_loss", loss_op)
-            tf.summary.image("sumary_target", T)
-            tf.summary.image("sumary_recon", T_hat)
-            summary_op = tf.summary.merge_all()
-
-        with tf.name_scope("init"):
-            init_op = tf.global_variables_initializer()
-
     # graph execution
     print('starting training with learning rate = {}'
-        .format(args.learning_rate))
-    with tf.Session(graph=g) as sess:
+          .format(args.learning_rate))
+    with tf.Session(graph=model.graph) as sess:
         summary_writer = tf.summary.FileWriter(
             os.path.join(args.save_path, "log"), sess.graph)
         saver = tf.train.Saver()
 
         # init graph variables
-        sess.run(init_op)
+        sess.run(model.init_op)
 
         # attempt to resume previous training
         epoch = 0
@@ -150,7 +50,7 @@ def train(args):
             print("Restored global epoch {}".format(epoch))
         else:
             print("Strating new model training for save path {}"
-                .format(args.save_path))
+                  .format(args.save_path))
 
         # Main training loop
         try:
@@ -160,22 +60,18 @@ def train(args):
                 for input_frames, target_frames, palettes in \
                         dataset.generate_training_batch():
 
-                    # get encodings for current batch
-                    curr_z = sess.run(Z, feed_dict={X: input_frames})
-
-                    # get reconstruction and loss, and then update
                     loss, _, summary = sess.run(
-                        [loss_op, train_op, summary_op],
+                        [model.loss_op, model.train_op, model.summary_op],
                         feed_dict={
-                            Z_placeholder: curr_z,
-                            T: target_frames
+                            model.X: input_frames,
+                            model.T: target_frames
                         }
                     )
 
                     itr += 1
                     if itr % args.log_interval == 0:
                         print("Epoch {} Itr {} loss = {}"
-                            .format(epoch, itr, loss))
+                              .format(epoch, itr, loss))
 
                         # update summaries. update global step
                         summary_writer.add_summary(
@@ -197,24 +93,6 @@ def train(args):
                 os.path.join(args.save_path, "model.ckpt"),
                 global_step=epoch
             )
-
-        # get encoder and decoder subgraphs for inference
-        encoder_graph_def = tf.graph_util.extract_sub_graph(g.as_graph_def(),
-                                                            dest_nodes=[Z.name[:-2]])
-        encoder_graph_def = tf.graph_util.convert_variables_to_constants(sess,
-                                                                         encoder_graph_def,
-                                                                         [Z.name[:-2]])
-        decoder_graph_def = tf.graph_util.extract_sub_graph(g.as_graph_def(),
-                                                            dest_nodes=[T_hat.name[:-2]])
-        decoder_graph_def = tf.graph_util.convert_variables_to_constants(sess,
-                                                                         decoder_graph_def,
-                                                                         [T_hat.name[:-2]])
-
-        # save frozen graphs for inference
-        with tf.gfile.GFile(os.path.join(args.save_path, "encoder_graph.pb"), "wb") as f:
-            f.write(encoder_graph_def.SerializeToString())
-        with tf.gfile.GFile(os.path.join(args.save_path, "decoder_graph.pb"), "wb") as f:
-            f.write(decoder_graph_def.SerializeToString())
 
 
 if __name__ == "__main__":

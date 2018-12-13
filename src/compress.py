@@ -85,28 +85,11 @@ def compress(args):
     # window_len = args.window_size + \
     #     max(0, args.target_offset - args.window_size)
 
-    # load frozen graph def from pb
-    with tf.gfile.GFile(osp.join(args.save_path, "encoder_graph.pb"), "rb") as f:
-        graph_def = tf.GraphDef()
-        graph_def.ParseFromString(f.read())
-
-    # import graph def
-    with tf.Graph().as_default() as g:
-        tf.import_graph_def(graph_def)
-
-        # extract names of input and output tensors for encoder
-        # input tensor (X) i.e. gif frames will be the first node
-        # output tensor (Z) i.e. encoding will be last node
-        graph_ops = g.get_operations()
-        X_tensor_name = graph_ops[0].values()[0].name
-        Z_tensor_name = graph_ops[-1].values()[0].name
-
-        # get tensors so that we can fetch then in inference sess
-        X = g.get_tensor_by_name(X_tensor_name)
-        Z = g.get_tensor_by_name(Z_tensor_name)
-
     # start inference
-    with tf.Session(graph=g) as sess:
+    with tf.Session(graph=model.graph) as sess:
+        saver = tf.train.Saver()
+        saver.restore(sess, args.save_path)
+
         # TODO: batch all windows together for performance
         # instead of doing this itereatively
         for i in range(num_comp_frames):
@@ -120,8 +103,8 @@ def compress(args):
                 np.squeeze(compression_window, axis=0)
 
             compressed_frames[i, :] = sess.run(
-                Z,
-                feed_dict={X: compression_window}
+                model.Z,
+                feed_dict={model.X: compression_window}
             )
 
     # finally serialize compressed GIF to disk
