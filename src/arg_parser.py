@@ -55,7 +55,7 @@ def parse_train_args():
     parser.add_argument(
         "-b", "--batch-size",
         type=int,
-        default=64,
+        default=128,
         required=False,
         help="Batch size used for training"
     )

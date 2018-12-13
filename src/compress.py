@@ -5,6 +5,7 @@ from dataset_util import Dataset
 from arg_parser import parse_compress_args
 from model import Model
 from serdes import SerDes
+import transforms
 
 
 def compress(args):
@@ -19,6 +20,10 @@ def compress(args):
     args.l2_reg_strength = None
     args.learning_rate = 0.0005
     model = Model(args)
+
+    input_transform = None
+    if args.input_transform is not None:
+        input_transform = getattr(transforms, args.input_transform)
 
     # validate input GIF and load it
     if not osp.exists(args.data) and not osp.isfile(args.data):
@@ -39,6 +44,9 @@ def compress(args):
     if frames is None:
         raise ValueError(
             "Could not read GIF file at path {}".format(args.data))
+
+    if input_transform is not None:
+        frames = input_transform(frames)
 
     # crop if needed
     if args.crop_pos is not None:
@@ -74,8 +82,8 @@ def compress(args):
     )
 
     # number of frames we need to slice out of the GIF each time for inference
-    window_len = args.window_size + \
-        max(0, args.target_offset - args.window_size)
+    # window_len = args.window_size + \
+    #     max(0, args.target_offset - args.window_size)
 
     # start inference
     with tf.Session(graph=model.graph) as sess:
@@ -86,8 +94,8 @@ def compress(args):
         # instead of doing this itereatively
         for i in range(num_comp_frames):
             compression_window = np.expand_dims(
-                frames[i:i + window_len, :, :].copy(),
-                axis=3
+                frames[i:i + args.window_size, :, :].copy(),
+                axis=-1
             )
 
             # if window_size is 1, then we need to shrink the input to 2D
@@ -107,6 +115,8 @@ def compress(args):
         out_path,
         args.window_size,
         args.target_offset,
+        args.crop_height,
+        args.crop_width,
         palette,
         head_frames,
         compressed_frames,
