@@ -7,6 +7,8 @@ from arg_parser import parse_decompress_args
 from model import Model
 from serdes import SerDes
 
+import pdb
+
 
 def decompress(args):
     # TODO: we need the full graph for now. but at some point,
@@ -86,15 +88,33 @@ def decompress(args):
         shape=(num_comp_frames, crop_height, crop_width),
         dtype=np.float32
     )
-    with tf.Session(graph=model.graph) as sess:
-        saver = tf.train.Saver()
-        saver.restore(sess, args.save_path)
 
+    # load frozen graph def from pb
+    with tf.gfile.GFile(osp.join(args.save_path, "decoder_graph.pb"), "rb") as f:
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(f.read())
+
+    # import graph def
+    with tf.Graph().as_default() as g:
+        tf.import_graph_def(graph_def)
+
+        # extract names of input and output tensors for decoder
+        # input tensor (Z_placeholder) will be the first node
+        # output tensor (T_hat) i.e. recon frame will be last node
+        graph_ops = g.get_operations()
+        Z_placeholder_tensor_name = graph_ops[0].values()[0].name
+        T_hat_tensor_name = graph_ops[-1].values()[0].name
+
+        # get tensors so that we can fetch then in inference sess
+        Z_placeholder = g.get_tensor_by_name(Z_placeholder_tensor_name)
+        T_hat = g.get_tensor_by_name(T_hat_tensor_name)
+
+    with tf.Session(graph=g) as sess:
         # run all frames in a batch
         for i in range(num_comp_frames):
             decomp_frames_raw[i] = sess.run(
-                model.decompression_op,
-                feed_dict={model.Z_in: np.expand_dims(
+                T_hat,
+                feed_dict={Z_placeholder: np.expand_dims(
                     compressed_frames[num_head_frames + i], axis=0)
                 }
             )[:, :, 0]
