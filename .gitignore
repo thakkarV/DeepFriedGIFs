@@ -1,5 +1,6 @@
 # ignore dataset
 data/
+runs/
 .vscode/
 src/start_train_job.sh
 
