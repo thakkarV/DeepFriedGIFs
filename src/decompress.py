@@ -86,15 +86,38 @@ def decompress(args):
         shape=(num_comp_frames, crop_height, crop_width),
         dtype=np.float32
     )
-    with tf.Session(graph=model.graph) as sess:
-        saver = tf.train.Saver()
-        saver.restore(sess, args.save_path)
+
+    # load graph, feed dict key, and fetches for inference, based on args
+    if args.split_graph:
+        # load frozen decoder subgraph def from pb
+        with tf.gfile.GFile(osp.join(args.save_path, "decoder_graph.pb"), "rb") as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+
+        # import graph def
+        # TODO: remove hardcoded prefix "inference"?
+        with tf.Graph().as_default() as inference_graph:
+            tf.import_graph_def(graph_def, name="inference")
+
+            # get tensors so that we can fetch then in inference sess
+            inference_Z_in = inference_graph.get_tensor_by_name("inference/{}".format(model.Z_in.name))
+            inference_decompression_op = inference_graph.get_tensor_by_name("inference/{}".format(model.decompression_op.name))
+    else:
+        # load the train graph, but only use encoder subgraph
+        inference_graph = model.graph
+        inference_Z_in = model.Z_in
+        inference_decompression_op = model.decompression_op
+
+    with tf.Session(graph=inference_graph) as sess:
+        if not args.split_graph:
+            saver = tf.train.Saver()
+            saver.restore(sess, args.save_path)
 
         # run all frames in a batch
         for i in range(num_comp_frames):
             decomp_frames_raw[i] = sess.run(
-                model.decompression_op,
-                feed_dict={model.Z_in: np.expand_dims(
+                inference_decompression_op,
+                feed_dict={inference_Z_in: np.expand_dims(
                     compressed_frames[num_head_frames + i], axis=0)
                 }
             )[:, :, 0]

@@ -94,6 +94,24 @@ def train(args):
                 global_step=epoch
             )
 
+    # get encoder and decoder subgraphs for inference
+    encoder_graph_def = tf.graph_util.extract_sub_graph(model.graph.as_graph_def(),
+                                                        dest_nodes=[model.Z.name[:-2]])
+    encoder_graph_def = tf.graph_util.convert_variables_to_constants(sess,
+                                                                        encoder_graph_def,
+                                                                        [model.Z.name[:-2]])
+    decoder_graph_def = tf.graph_util.extract_sub_graph(model.graph.as_graph_def(),
+                                                        dest_nodes=[model.decompression_op.name[:-2]])
+    decoder_graph_def = tf.graph_util.convert_variables_to_constants(sess,
+                                                                        decoder_graph_def,
+                                                                        [model.decompression_op.name[:-2]])
+
+    # save frozen graphs for inference
+    with tf.gfile.GFile(os.path.join(args.save_path, "encoder_graph.pb"), "wb") as f:
+        f.write(encoder_graph_def.SerializeToString())
+    with tf.gfile.GFile(os.path.join(args.save_path, "decoder_graph.pb"), "wb") as f:
+        f.write(decoder_graph_def.SerializeToString())
+
 
 if __name__ == "__main__":
     args = parse_train_args()

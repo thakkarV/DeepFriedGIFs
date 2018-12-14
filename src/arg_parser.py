@@ -105,6 +105,14 @@ def parse_compress_args():
     )
 
     parser.add_argument(
+        "-s", "--split-graph",
+        type=int,
+        default=0,
+        required=False,
+        help="If nonzero, loads only the encoder subgraph of the train graph for inference. Otherwise loads the whole train graph and uses encoder parts for inference."
+    )
+
+    parser.add_argument(
         "-it", "--input-transform",
         type=str,
         required=False,
@@ -137,6 +145,14 @@ def parse_decompress_args():
         type=str,
         required=True,
         help="Name of the decoder model to be used."
+    )
+
+    parser.add_argument(
+        "-s", "--split-graph",
+        type=int,
+        default=0,
+        required=False,
+        help="If nonzero, loads only the decoder subgraph of the train graph for inference. Otherwise loads the whole train graph and uses decoder parts for inference."
     )
 
     parser.add_argument(

@@ -85,10 +85,32 @@ def compress(args):
     # window_len = args.window_size + \
     #     max(0, args.target_offset - args.window_size)
 
+    # load graph, feed dict key, and fetches for inference, based on args
+    if args.split_graph:
+        # load frozen encoder subgraph def from pb
+        with tf.gfile.GFile(osp.join(args.save_path, "encoder_graph.pb"), "rb") as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+
+        # import graph def
+        # TODO: remove hardcoded prefix "inference"?
+        with tf.Graph().as_default() as inference_graph:
+            tf.import_graph_def(graph_def, name="inference")
+
+            # get tensors so that we can fetch then in inference sess
+            inference_X = inference_graph.get_tensor_by_name("inference/{}".format(model.X.name))
+            inference_Z = inference_graph.get_tensor_by_name("inference/{}".format(model.Z.name))
+    else:
+        # load the train graph, but only use encoder subgraph
+        inference_graph = model.graph
+        inference_X = model.X
+        inference_Z = model.Z
+
     # start inference
-    with tf.Session(graph=model.graph) as sess:
-        saver = tf.train.Saver()
-        saver.restore(sess, args.save_path)
+    with tf.Session(graph=inference_graph) as sess:
+        if not args.split_graph:
+            saver = tf.train.Saver()
+            saver.restore(sess, args.save_path)
 
         # TODO: batch all windows together for performance
         # instead of doing this itereatively
@@ -103,8 +125,8 @@ def compress(args):
                 np.squeeze(compression_window, axis=0)
 
             compressed_frames[i, :] = sess.run(
-                model.Z,
-                feed_dict={model.X: compression_window}
+                inference_Z,
+                feed_dict={inference_X: compression_window}
             )
 
     # finally serialize compressed GIF to disk
