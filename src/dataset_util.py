@@ -5,6 +5,7 @@ import random
 import fnmatch
 import os
 import sys
+import colorsys
 import pdb
 
 # index of various metadata into the state array
@@ -28,7 +29,8 @@ class Dataset(object):
             crop_pos=None,
             crop_height=None,
             crop_width=None,
-            transform=None):
+            transform=None,
+            sort_palette=False):
         """Prameterizes the dataset based on the training requirements based on
         compression window and cropping settings andvalidates input parameters.
 
@@ -99,6 +101,7 @@ class Dataset(object):
         if transform is not None and not callable(transform):
             raise Exception("Input transform is not callable.")
         self.transform = transform
+        self.sort_palette = sort_palette
 
     def generate_training_batch(self):
         """Generator for the dataset during trianing. Each call retruns
@@ -306,9 +309,15 @@ class Dataset(object):
         i = start_file_idx
         while i < self.num_files:
             frames, palette = None, None
+
             # NOTE: this is for the pesky case of palette == None
             while palette is None and i < self.num_files:
                 frames, palette = Dataset.load_gif(self.files[i])
+                if (self.crop_pos is not None and (
+                        frames[0].shape[0] < self.crop_height
+                        or frames[0].shape[1] < self.crop_width)
+                    ):
+                    palette = None
                 i += 1
 
             if palette is None:
@@ -317,19 +326,17 @@ class Dataset(object):
             required_len = max(self.window_size, self.target_offset)
             gif_len, gif_height, git_width = np.shape(frames)
             if gif_len >= required_len:
-                # no cropping needed in FCN training
-                if self.crop_pos is None:
-                    return i, frames, palette
-
-                # crop otherwise
-                if (gif_height >= self.crop_height and
-                        git_width >= self.crop_width):
+                # no croping needed in FCN training, crop otherwise
+                if (self.crop_pos is not None):
                     frames = Dataset.crop_frames(
                         frames,
                         self.crop_pos,
                         self.crop_height,
                         self.crop_width)
-                    return i, frames, palette
+
+                if self.sort_palette:
+                    Dataset.sort_palette(frames, palette)
+                return i, frames, palette
             else:
                 # if these conditions are not met, then the GIF
                 # is not large enough for long enough for trianing
@@ -468,6 +475,49 @@ class Dataset(object):
         )
 
         file.close()
+
+    @staticmethod
+    def sort_palette(frames, palette):
+        """Sorts the colour palette to have 'similar' colours next to
+        each other according to their HSV value and remaps the input frames
+        and palette according to the new colour order.
+
+        Arguments:
+            frames {np.ndarray} -- frames of the GIF
+            palette {np.ndarray} -- colour palette
+
+        Returns:
+            {np.ndarray, np.ndarray} -- sorted palette and remapped frames
+        """
+        colours = []
+        for i in range(int(len(palette) / 3)):
+            colours.append(
+                [palette[i * 3], palette[(i * 3) + 1], palette[(i * 3) + 2]]
+            )
+
+        sorted_idx_col_list = sorted(
+            enumerate(colours),
+            key=lambda idx_col: colorsys.rgb_to_hsv(*idx_col[1])
+        )
+
+        idx_map = len(sorted_idx_col_list) * [None]
+        for i in range(len(sorted_idx_col_list)):
+            idx_map[sorted_idx_col_list[i][0]] = i
+
+        # replace colours in palette
+        for i in range(int(len(palette) / 3)):
+            col_idx = sorted_idx_col_list[i][0]
+            palette[(col_idx * 3) + 0] = sorted_idx_col_list[i][1][0]
+            palette[(col_idx * 3) + 1] = sorted_idx_col_list[i][1][1]
+            palette[(col_idx * 3) + 2] = sorted_idx_col_list[i][1][2]
+
+        # replace indexes in frames
+        for frame in frames:
+            for i in range(frame.shape[0]):
+                for j in range(frame.shape[1]):
+                    frame[i, j] = idx_map[int(frame[i, j])]
+
+        return frames, palette
 
 
 if __name__ == "__main__":
