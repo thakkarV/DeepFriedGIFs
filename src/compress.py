@@ -65,7 +65,9 @@ def compress(args):
     num_tail_frames = max(0, args.window_size - args.target_offset - 1)
 
     head_frames = frames[0:num_head_frames, :, :]
-    tail_frames = frames[:-num_tail_frames, :, :]
+    tail_frames = None
+    if num_tail_frames > 0:
+        tail_frames = frames[-num_tail_frames:, :, :]
     num_comp_frames = frames.shape[0] - num_head_frames - num_tail_frames
 
     if num_comp_frames <= 0:
@@ -120,8 +122,11 @@ def compress(args):
                 axis=-1
             )
 
+            if args.window_size > 1:
+                compression_window = \
+                    np.expand_dims(compression_window, axis=0)
             # if window_size is 1, then we need to shrink the input to 2D
-            if compression_window.shape[0] == 1:
+            else:
                 np.squeeze(compression_window, axis=0)
 
             compressed_frames[i, :] = sess.run(

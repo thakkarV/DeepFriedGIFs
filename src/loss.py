@@ -33,12 +33,12 @@ def reconstruction_loss(
         loss = tf.reduce_sum(target - recon)
     elif metric == "VAE_loss":
         recon = tf.reduce_sum(
-            tf.losses.sigmoid_cross_entropy(recon, target),
-            axis=1
+            tf.losses.sigmoid_cross_entropy(recon, target)
+            
         )
         kl = tf.reduce_sum(
-            tf.exp(log_sigma) + tf.square(mu) - 1 - log_sigma,
-            axis=1
+            tf.exp(log_sigma) + tf.square(mu) - 1 - log_sigma
+            
         )
         loss = recon + 0.5*kl
     elif metric == "SSIM":

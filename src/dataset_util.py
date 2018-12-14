@@ -253,7 +253,7 @@ class Dataset(object):
 
         palette_batch = np.empty(
             shape=(self.batch_size, 768),
-            dtype=np.int8
+            dtype=np.uint8
         )
 
         # slice the input GIFs to window_size, cast to type,
@@ -284,7 +284,7 @@ class Dataset(object):
             )
 
             # palette
-            palette_batch[i, :] = palette_dict[gif_idx].astype(np.int8)
+            palette_batch[i, :] = palette_dict[gif_idx].astype(np.uint8)
 
         return frame_batch, target_batch, palette_batch
 
@@ -434,7 +434,7 @@ class Dataset(object):
         except EOFError:
             gif.close()
             frames = np.array(frames, dtype=np.float32)
-            palette = np.array(palette, dtype=np.int8)
+            palette = np.array(palette, dtype=np.uint8)
             return frames, palette
 
     @staticmethod
@@ -444,8 +444,8 @@ class Dataset(object):
 
         Arguments:
             path {str} -- full path to output gif including file_name.gif
-            frames {np.ndarray} -- Frames of the gif in dtype=np.int8
-            palette {np.ndarray} -- Colour palette of the gif in dtype=np.int8
+            frames {np.ndarray} -- Frames of the gif in dtype=np.uint8
+            palette {np.ndarray} -- Colour palette of the gif in dtype=np.uint8
         """
         file = open(path, 'wb')
         # NOTE: mode 'P' means:
@@ -457,7 +457,6 @@ class Dataset(object):
         for i in range(1, frames.shape[0]):
             other_imgs.append(Image.fromarray(frames[i], mode='P'))
 
-        pdb.set_trace()
         pil_palette = ImagePalette(
             mode="RGB", palette=bytearray(palette), size=len(palette))
         first_img.save(
