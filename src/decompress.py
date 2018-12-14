@@ -110,11 +110,9 @@ def decompress(args):
 
     # write out uncompressed head and tail frames
     output_gif[0:num_head_frames, :, :] = head_frames
-    output_gif[-num_tail_frames, :, :] = tail_frames
+    output_gif[-num_tail_frames:, :, :] = tail_frames
 
     # write into frames array
-    import pdb
-    pdb.set_trace()
     comp_start_idx = num_head_frames
     comp_end_idx = num_head_frames + num_comp_frames
     output_gif[comp_start_idx:comp_end_idx, :, :] = decomp_frames
