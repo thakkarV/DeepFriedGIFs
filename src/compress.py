@@ -65,7 +65,7 @@ def compress(args):
     num_tail_frames = max(0, args.window_size - args.target_offset - 1)
 
     head_frames = frames[0:num_head_frames, :, :]
-    tail_frames = frames[:-num_tail_frames, :, :]
+    tail_frames = frames[-num_tail_frames, :, :]
     num_comp_frames = frames.shape[0] - num_head_frames - num_tail_frames
 
     if num_comp_frames <= 0:
@@ -93,9 +93,11 @@ def compress(args):
         # TODO: batch all windows together for performance
         # instead of doing this itereatively
         for i in range(num_comp_frames):
-            compression_window = np.expand_dims(
-                frames[i:i + args.window_size, :, :].copy(),
-                axis=-1
+            compression_window = np.expand_dims(np.expand_dims(
+                    frames[i:i + args.window_size, :, :].copy(),
+                    axis=-1
+                ),
+                axis=0
             )
 
             # if window_size is 1, then we need to shrink the input to 2D
