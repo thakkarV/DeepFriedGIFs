@@ -9,3 +9,7 @@
 ![Alt Text](https://github.com/thakkarV/DeepFriedGIFs/blob/dev/results/inf.gif)
 
 ![Alt Text](https://github.com/thakkarV/DeepFriedGIFs/blob/dev/results/inf_comp.gif)
+
+![Alt Text](https://github.com/thakkarV/DeepFriedGIFs/blob/dev/results/hourglass.gif)
+
+![Alt Text](https://github.com/thakkarV/DeepFriedGIFs/blob/dev/results/hourglass_comp.gif)
