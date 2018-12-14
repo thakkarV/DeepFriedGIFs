@@ -8,6 +8,10 @@ from model import Model
 from serdes import SerDes
 
 
+def nonetype_transform(inputs):
+    return inputs
+
+
 def decompress(args):
     # TODO: we need the full graph for now. but at some point,
     # we need to decouple the encoder and decoder
@@ -25,6 +29,8 @@ def decompress(args):
     output_transform = None
     if args.output_transform is not None:
         output_transform = getattr(transforms, args.output_transform)
+    else:
+        output_transform = nonetype_transform
 
     # validate input GIF and load it
     if not osp.exists(args.data):
@@ -93,24 +99,20 @@ def decompress(args):
                 feed_dict={model.Z_in: np.expand_dims(
                     compressed_frames[i], axis=0)
                 }
-            )[:, :, 0]
+            )[0, :, :, 0]
 
     # denormalize if specified
-    decomp_frames = None
-    if output_transform is None:
-        decomp_frames = decomp_frames_raw.astype(np.uint8)
-        head_frames = head_frames.astype(np.uint8)
-        tail_frames = tail_frames.astype(np.uint8)
-    else:
-        decomp_frames = (output_transform(decomp_frames_raw)).astype(np.uint8)
+    decomp_frames = (output_transform(decomp_frames_raw)).astype(np.uint8)
+
+    if head_frames is not None:
         head_frames = (output_transform(head_frames)).astype(np.uint8)
+        output_gif[0:num_head_frames, :, :] = head_frames
+
+    if tail_frames is not None:
         tail_frames = (output_transform(tail_frames)).astype(np.uint8)
+        output_gif[-num_tail_frames:, :, :] = tail_frames
 
     assert len(decomp_frames) == num_comp_frames
-
-    # write out uncompressed head and tail frames
-    output_gif[0:num_head_frames, :, :] = head_frames
-    output_gif[-num_tail_frames:, :, :] = tail_frames
 
     # write into frames array
     comp_start_idx = num_head_frames
@@ -122,7 +124,7 @@ def decompress(args):
           .format(num_comp_frames, num_head_frames, num_tail_frames))
 
     # save file to disk
-    Dataset.write_gif(out_path, decomp_frames, palette)
+    Dataset.write_gif(out_path, output_gif, palette)
 
 
 if __name__ == "__main__":
