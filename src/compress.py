@@ -93,12 +93,13 @@ def compress(args):
         # TODO: batch all windows together for performance
         # instead of doing this itereatively
         for i in range(num_comp_frames):
-            compression_window = np.expand_dims(np.expand_dims(
-                    frames[i:i + args.window_size, :, :].copy(),
-                    axis=-1
-                ),
-                axis=0
+            compression_window = np.expand_dims(
+                frames[i:i + args.window_size, :, :].copy(),
+                axis=-1
             )
+
+            if args.window_size > 1:
+                np.expand_dims(compression_window, axis=0)
 
             # if window_size is 1, then we need to shrink the input to 2D
             if compression_window.shape[0] == 1:
