@@ -65,7 +65,7 @@ def compress(args):
     num_tail_frames = max(0, args.window_size - args.target_offset - 1)
 
     head_frames = frames[0:num_head_frames, :, :]
-    tail_frames = frames[-num_tail_frames, :, :]
+    tail_frames = frames[-num_tail_frames:, :, :]
     num_comp_frames = frames.shape[0] - num_head_frames - num_tail_frames
 
     if num_comp_frames <= 0:

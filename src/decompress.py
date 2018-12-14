@@ -38,10 +38,10 @@ def decompress(args):
         raise ValueError("Invalid path to output file.")
 
     if args.out_name is not None:
-        out_path = osp.join(args.out_path, args.out_name + '.dfg')
+        out_path = osp.join(args.out_path, args.out_name)
     else:
         out_name = args.data.split('/')[-1].split('.')[-2]
-        out_path = osp.join(args.out_path, out_name, '.dfg')
+        out_path = osp.join(args.out_path, out_name)
 
     # load GIF
     dfg_obj = SerDes.read_compressed_gif(args.data)
@@ -72,14 +72,10 @@ def decompress(args):
     num_total_frames = num_head_frames + num_comp_frames + num_tail_frames
 
     # init compressed frame array
-    decompressed_frames = np.empty(
+    output_gif = np.empty(
         shape=(num_total_frames, crop_height, crop_width),
-        dtype=np.int8
+        dtype=np.uint8
     )
-
-    # write out uncompressed head and tail frames
-    decompressed_frames[0:num_head_frames, :, :] = head_frames
-    decompressed_frames[:-num_tail_frames, :, :] = tail_frames
 
     # start inference to decompress frames
     decomp_frames_raw = np.empty(
@@ -95,22 +91,33 @@ def decompress(args):
             decomp_frames_raw[i] = sess.run(
                 model.decompression_op,
                 feed_dict={model.Z_in: np.expand_dims(
-                    compressed_frames[num_head_frames + i], axis=0)
+                    compressed_frames[i], axis=0)
                 }
             )[:, :, 0]
 
     # denormalize if specified
     decomp_frames = None
     if output_transform is None:
-        decomp_frames = decomp_frames_raw.astype(np.int8)
+        decomp_frames = decomp_frames_raw.astype(np.uint8)
+        head_frames = head_frames.astype(np.uint8)
+        tail_frames = tail_frames.astype(np.uint8)
     else:
-        decomp_frames = (output_transform(decomp_frames_raw)).astype(np.int8)
+        decomp_frames = (output_transform(decomp_frames_raw)).astype(np.uint8)
+        head_frames = (output_transform(head_frames)).astype(np.uint8)
+        tail_frames = (output_transform(tail_frames)).astype(np.uint8)
+
     assert len(decomp_frames) == num_comp_frames
 
+    # write out uncompressed head and tail frames
+    output_gif[0:num_head_frames, :, :] = head_frames
+    output_gif[-num_tail_frames, :, :] = tail_frames
+
     # write into frames array
+    import pdb
+    pdb.set_trace()
     comp_start_idx = num_head_frames
     comp_end_idx = num_head_frames + num_comp_frames
-    decomp_frames[comp_start_idx:comp_end_idx, :, :] = decomp_frames
+    output_gif[comp_start_idx:comp_end_idx, :, :] = decomp_frames
 
     # finally serialize compressed GIF to disk
     print("Decompressed {} frames with {} head frames and {} tail frames"
