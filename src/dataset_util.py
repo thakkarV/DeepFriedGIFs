@@ -450,21 +450,20 @@ class Dataset(object):
         file = open(path, 'wb')
         # NOTE: mode 'P' means:
         # "8-bit pixels, mapped to any other mode using a color palette"
-        first_img = Image.fromarray(frames[0], mode='P')
+        first_img = Image.fromarray(frames[0], mode='I')
         other_imgs = []
 
         # now we have to generate each frame as PIL image first
         for i in range(1, frames.shape[0]):
-            other_imgs.append(Image.fromarray(frames[i], mode='P'))
+            other_imgs.append(Image.fromarray(frames[i], mode='I'))
 
         pil_palette = ImagePalette(
-            mode="RGB", palette=bytearray(palette), size=len(palette))
+            mode="I", palette=bytearray(palette), size=len(palette))
         first_img.save(
             file,
             format="GIF",
             save_all=True,
             append_images=other_imgs,
-            palette=pil_palette,
             loop=0
         )
 
