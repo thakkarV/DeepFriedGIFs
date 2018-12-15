@@ -80,7 +80,7 @@ def decompress(args):
     # init compressed frame array
     output_gif = np.empty(
         shape=(num_total_frames, crop_height, crop_width),
-        dtype=np.uint32
+        dtype=np.uint8
     )
 
     # start inference to decompress frames

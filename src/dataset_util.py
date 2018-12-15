@@ -117,7 +117,7 @@ class Dataset(object):
         # init booking data structures: dataset curators
         # each row stores the following metadata about
         # the GIFs in the current batch
-        # curator_state[i, 0] := index of the GIF in self.files
+        # curator_state[i, 0] := indoex of the GIF in self.files
         # curator_state[i, 1] := index of current window start frame
         # curator_state[i, 2] := total number of frames in the current GIF
         # NOTE: this implies that curr_gif_seek_head = max(curator_state[:, 0])
@@ -457,20 +457,21 @@ class Dataset(object):
         file = open(path, 'wb')
         # NOTE: mode 'P' means:
         # "8-bit pixels, mapped to any other mode using a color palette"
-        first_img = Image.fromarray(frames[0], mode='I')
+        first_img = Image.fromarray(frames[0], mode='P')
         other_imgs = []
 
         # now we have to generate each frame as PIL image first
         for i in range(1, frames.shape[0]):
-            other_imgs.append(Image.fromarray(frames[i], mode='I'))
+            other_imgs.append(Image.fromarray(frames[i], mode='P'))
 
         pil_palette = ImagePalette(
-            mode="I", palette=bytearray(palette), size=len(palette))
+            mode='P', palette=bytearray(palette), size=len(palette))
         first_img.save(
             file,
             format="GIF",
             save_all=True,
             append_images=other_imgs,
+            palette=pil_palette,
             loop=0
         )
 
@@ -506,10 +507,9 @@ class Dataset(object):
 
         # replace colours in palette
         for i in range(int(len(palette) / 3)):
-            col_idx = sorted_idx_col_list[i][0]
-            palette[(col_idx * 3) + 0] = sorted_idx_col_list[i][1][0]
-            palette[(col_idx * 3) + 1] = sorted_idx_col_list[i][1][1]
-            palette[(col_idx * 3) + 2] = sorted_idx_col_list[i][1][2]
+            palette[(i * 3) + 0] = sorted_idx_col_list[i][1][0]
+            palette[(i * 3) + 1] = sorted_idx_col_list[i][1][1]
+            palette[(i * 3) + 2] = sorted_idx_col_list[i][1][2]
 
         # replace indexes in frames
         for frame in frames:
