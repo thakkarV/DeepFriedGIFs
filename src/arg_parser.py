@@ -226,4 +226,13 @@ def add_common_args(parser):
         help="Dimensions of latent space representative vector."
     )
 
+    parser.add_argument(
+        "--sort-palette",
+        type=bool,
+        default=True,
+        required=False,
+        help="True if the order of the color palette \
+            is to be sorted by the dataset reader."
+    )
+
     return parser

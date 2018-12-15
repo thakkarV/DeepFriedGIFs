@@ -21,7 +21,8 @@ def train(args):
         args.crop_pos,
         args.crop_height,
         args.crop_width,
-        input_transform
+        input_transform,
+        args.sort_palette
     )
 
     if not os.path.exists(args.save_path):

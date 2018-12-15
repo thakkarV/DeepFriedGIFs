@@ -41,6 +41,9 @@ def compress(args):
 
     # load GIF
     frames, palette = Dataset.load_gif(args.data)
+    if args.sort_palette:
+        frames, palette = Dataset.sort_palette(frames, palette)
+
     if frames is None:
         raise ValueError(
             "Could not read GIF file at path {}".format(args.data))
