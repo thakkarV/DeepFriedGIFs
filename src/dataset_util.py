@@ -313,7 +313,7 @@ class Dataset(object):
             # NOTE: this is for the pesky case of palette == None
             while palette is None and i < self.num_files:
                 frames, palette = Dataset.load_gif(self.files[i])
-                if (self.crop_pos is not None and (
+                if (palette is not None and self.crop_pos is not None and (
                         frames[0].shape[0] < self.crop_height
                         or frames[0].shape[1] < self.crop_width)
                     ):
