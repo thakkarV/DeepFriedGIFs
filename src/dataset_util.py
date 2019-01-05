@@ -445,7 +445,7 @@ class Dataset(object):
             return frames, palette
 
     @staticmethod
-    def write_gif(path, frames, palette):
+    def write_gif(path, frames, palette, enable_color=True):
         """Writes a GIF file to disk by generating a new PIL GIF
         from the input frames and color map.
 
@@ -454,18 +454,22 @@ class Dataset(object):
             frames {np.ndarray} -- Frames of the gif in dtype=np.uint8
             palette {np.ndarray} -- Colour palette of the gif in dtype=np.uint8
         """
+        mode = 'P' if enable_color else 'I'
         file = open(path, 'wb')
         # NOTE: mode 'P' means:
         # "8-bit pixels, mapped to any other mode using a color palette"
-        first_img = Image.fromarray(frames[0], mode='P')
+        first_img = Image.fromarray(frames[0], mode=mode)
         other_imgs = []
 
         # now we have to generate each frame as PIL image first
         for i in range(1, frames.shape[0]):
-            other_imgs.append(Image.fromarray(frames[i], mode='P'))
+            other_imgs.append(Image.fromarray(frames[i], mode=mode))
 
-        pil_palette = ImagePalette(
-            mode='P', palette=bytearray(palette), size=len(palette))
+        if enable_color:
+            pil_palette = ImagePalette(
+                mode=mode, palette=bytearray(palette), size=len(palette))
+        else:
+            pil_palette = None
         first_img.save(
             file,
             format="GIF",

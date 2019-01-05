@@ -160,6 +160,14 @@ def parse_decompress_args():
         help="Path to output directory."
     )
 
+    parser.add_argument(
+        "--enable_color",
+        type=bool,
+        required=False,
+        default=True,
+        help="False to output greyscale GIFs only."
+    )
+
     return parser.parse_args()
 
 

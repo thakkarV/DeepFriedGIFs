@@ -124,7 +124,7 @@ def decompress(args):
           .format(num_comp_frames, num_head_frames, num_tail_frames))
 
     # save file to disk
-    Dataset.write_gif(out_path, output_gif, palette)
+    Dataset.write_gif(out_path, output_gif, palette, args.enable_color)
 
 
 if __name__ == "__main__":
