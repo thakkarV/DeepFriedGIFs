@@ -34,17 +34,15 @@ def reconstruction_loss(
     elif metric == "VAE_loss":
         recon = tf.reduce_sum(
             tf.losses.sigmoid_cross_entropy(recon, target)
-            
         )
         kl = tf.reduce_sum(
             tf.exp(log_sigma) + tf.square(mu) - 1 - log_sigma
-            
         )
-        loss = recon + 0.5*kl
+        loss = recon + (0.5 * kl)
     elif metric == "SSIM":
         # SSIM loss as defined in:
         # https://research.nvidia.com/sites/default/files/pubs/2017-03_Loss-Functions-for/NN_ImgProc.pdf
-        loss = 1 - tf.reduce_mean(tf.image.ssim(target, recon, max_val=255))
+        loss = 1 - tf.reduce_mean(tf.image.ssim(target, recon, max_val=1.00))
     else:
         raise NotImplementedError(
             "Metric type {} is invalid for reconstruction loss".format(metric)
